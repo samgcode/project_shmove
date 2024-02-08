@@ -4,7 +4,10 @@ use winit::{event::WindowEvent, window::Window};
 
 use mesh::{DrawModel, Vertex};
 
+use self::light::Light;
+
 mod camera;
+mod light;
 mod mesh;
 mod resources;
 mod texture;
@@ -123,6 +126,7 @@ pub struct State {
   instance_buffer: wgpu::Buffer,
   clear_color: wgpu::Color,
   depth_texture: texture::Texture,
+  light: Light,
   window: Window,
 }
 
@@ -214,6 +218,15 @@ impl State {
       }],
     });
 
+    let light = Light::new(
+      &device,
+      &camera_bind_group_layout,
+      wgpu::ShaderSource::Wgsl(include_str!("render/shader/light.wgsl").into()),
+      config.format,
+      [2.0, 5.0, 2.0],
+      [1.0, 1.0, 1.0],
+    );
+
     let obj = resources::load_mesh("cube.obj", &device).await.unwrap();
 
     const NUM_INSTANCES_PER_ROW: u32 = 10;
@@ -251,7 +264,7 @@ impl State {
     let render_pipeline_layout: wgpu::PipelineLayout =
       device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("Render Pipeline Layout"),
-        bind_group_layouts: &[&camera_bind_group_layout],
+        bind_group_layouts: &[&camera_bind_group_layout, &light.bind_group_layout],
         push_constant_ranges: &[],
       });
 
@@ -287,6 +300,7 @@ impl State {
       instance_buffer,
       clear_color,
       depth_texture,
+      light,
       window,
     }
   }
@@ -308,7 +322,7 @@ impl State {
     false
   }
 
-  pub fn update(&mut self, _dt: instant::Duration) {
+  pub fn update(&mut self, dt: instant::Duration) {
     self
       .camera_uniform
       .update_view_proj(&self.camera, &self.projection);
@@ -336,6 +350,18 @@ impl State {
       &self.instance_buffer,
       0,
       bytemuck::cast_slice(&instance_data),
+    );
+
+    let old_position: cgmath::Vector3<_> = self.light.uniform.position.into();
+    self.light.uniform.position = (cgmath::Quaternion::from_axis_angle(
+      (0.0, 1.0, 0.0).into(),
+      cgmath::Deg(60.0 * dt.as_secs_f32()),
+    ) * old_position)
+      .into();
+    self.queue.write_buffer(
+      &self.light.buffer,
+      0,
+      bytemuck::cast_slice(&[self.light.uniform]),
     );
   }
 
@@ -376,11 +402,17 @@ impl State {
       });
 
       render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+
+      use mesh::DrawLight;
+      render_pass.set_pipeline(&self.light.render_pipeline);
+      render_pass.draw_light_mesh(&self.obj, &self.camera_bind_group, &self.light.bind_group);
+
       render_pass.set_pipeline(&self.render_pipeline);
       render_pass.draw_mesh_instanced(
         &self.obj,
         0..self.instances.len() as u32,
         &self.camera_bind_group,
+        &self.light.bind_group,
       );
     }
     self.queue.submit(std::iter::once(encoder.finish()));

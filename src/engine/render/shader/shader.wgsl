@@ -5,6 +5,13 @@ struct Camera {
 @group(0) @binding(0)
 var<uniform> camera: Camera;
 
+struct Light {
+  position: vec3<f32>,
+  color: vec3<f32>,
+}
+@group(1) @binding(0)
+var<uniform> light: Light;
+
 struct VertexInput {
   @location(0) position: vec3<f32>,
   @location(1) normal: vec3<f32>,
@@ -57,5 +64,20 @@ fn vs_main(
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-  return vec4<f32>(in.color, 1.0);
+  let ambient_strength = 0.1;
+  let ambient_color = light.color * ambient_strength;
+
+  let light_dir = normalize(light.position - in.world_position);
+  let view_dir = normalize(camera.view_pos.xyz - in.world_position);
+  let half_dir = normalize(view_dir + light_dir);
+
+  let diffuse_strength = max(dot(in.world_normal, light_dir), 0.0);
+  let diffuse_color = light.color * diffuse_strength;
+
+  let specular_strength = pow(max(dot(in.world_normal, half_dir), 0.0), 32.0);
+  let specular_color = specular_strength * light.color;
+
+  let result = (ambient_color + diffuse_color + specular_color);
+  
+  return vec4<f32>(result, 0.0);
 }
