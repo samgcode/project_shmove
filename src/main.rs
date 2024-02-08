@@ -1,3 +1,5 @@
+use project_shmove::engine;
+
 fn main() {
-    println!("Hello, world!");
+  pollster::block_on(engine::run());
 }
