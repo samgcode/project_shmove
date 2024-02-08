@@ -1,5 +1,5 @@
 
-mod input;
+pub mod input;
 
 pub struct State {
   pub input: input::Input,

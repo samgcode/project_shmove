@@ -4,9 +4,9 @@ use winit::window::Window;
 
 use mesh::{DrawModel, Vertex};
 
-use self::light::Light;
+use light::Light;
+use crate::engine::camera;
 
-mod camera;
 mod light;
 mod mesh;
 mod resources;
@@ -116,7 +116,6 @@ pub struct State {
   config: wgpu::SurfaceConfiguration,
   size: winit::dpi::PhysicalSize<u32>,
   render_pipeline: wgpu::RenderPipeline,
-  camera: camera::Camera,
   projection: camera::Projection,
   camera_uniform: CameraUniform,
   camera_buffer: wgpu::Buffer,
@@ -131,7 +130,7 @@ pub struct State {
 }
 
 impl State {
-  pub async fn new(window: Window) -> Self {
+  pub async fn new(window: Window, camera: &camera::Camera) -> Self {
     let size = window.inner_size();
 
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -181,7 +180,6 @@ impl State {
     };
     surface.configure(&device, &config);
 
-    let camera = camera::Camera::new((0.0, 5.0, 10.0), cgmath::Deg(-90.0), cgmath::Deg(-20.0));
     let projection =
       camera::Projection::new(config.width, config.height, cgmath::Deg(45.0), 0.1, 100.0);
 
@@ -290,7 +288,6 @@ impl State {
       config,
       size,
       render_pipeline,
-      camera,
       projection,
       camera_uniform,
       camera_buffer,
@@ -318,10 +315,10 @@ impl State {
     }
   }
 
-  pub fn update(&mut self, dt: instant::Duration) {
+  pub fn update(&mut self, camera: &camera::Camera, dt: instant::Duration) {
     self
       .camera_uniform
-      .update_view_proj(&self.camera, &self.projection);
+      .update_view_proj(camera, &self.projection);
 
     self.queue.write_buffer(
       &self.camera_buffer,

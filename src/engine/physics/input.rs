@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-
 use cgmath::Vector2;
 use winit::{
   dpi::PhysicalPosition,
@@ -13,6 +12,8 @@ pub struct Input {
   key_states: HashMap<VirtualKeyCode, bool>,
   mouse_states: HashMap<MouseButton, bool>,
   mouse_position: Vector2<f32>,
+  prev_mouse_position: Vector2<f32>,
+  mouse_speed: Vector2<f32>,
   scroll_speed: f32,
 }
 
@@ -22,6 +23,8 @@ impl Input {
       key_states: HashMap::new(),
       mouse_states: HashMap::new(),
       mouse_position: Vector2 { x: 0.0, y: 0.0 },
+      prev_mouse_position: Vector2 { x: 0.0, y: 0.0 },
+      mouse_speed: Vector2 { x: 0.0, y: 0.0 },
       scroll_speed: 0.0,
     }
   }
@@ -58,6 +61,9 @@ impl Input {
 
   pub fn get_mouse_position(&self) -> Vector2<f32> {
     Vector2 { x: self.mouse_position.x, y: self.mouse_position.y }
+  }
+  pub fn get_mouse_speed(&self) -> Vector2<f32> {
+    Vector2 { x: self.mouse_speed.x, y: self.mouse_speed.y }
   }
 
   pub fn handle_event(&mut self, event: &Event<'_, ()>) {
@@ -103,5 +109,10 @@ impl Input {
       },
       _ => {}
     };
+  }
+
+  pub fn update (&mut self) {
+    self.mouse_speed = (self.mouse_position - self.prev_mouse_position) * 0.1;
+    self.prev_mouse_position = self.mouse_position;
   }
 }
