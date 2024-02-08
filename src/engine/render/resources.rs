@@ -49,7 +49,7 @@ pub async fn load_mesh(
           model.mesh.normals[i * 3 + 1],
           model.mesh.normals[i * 3 + 2],
         ],
-        color: [1.0; 3],
+        color: [1.0, 0.0, 0.75],
       })
       .collect::<Vec<_>>();
 

@@ -7,6 +7,7 @@ use mesh::{DrawModel, Vertex};
 mod camera;
 mod mesh;
 mod resources;
+mod texture;
 
 const ROTATION_SPEED: cgmath::Vector3<f32> = cgmath::Vector3::new(
   0.5 * std::f32::consts::PI / 120.0,
@@ -121,6 +122,7 @@ pub struct State {
   instances: Vec<Instance>,
   instance_buffer: wgpu::Buffer,
   clear_color: wgpu::Color,
+  depth_texture: texture::Texture,
   window: Window,
 }
 
@@ -244,6 +246,8 @@ impl State {
 
     let clear_color = wgpu::Color::BLACK;
 
+    let depth_texture = texture::Texture::create_depth_texture(&device, &config, "depth_texture");
+
     let render_pipeline_layout: wgpu::PipelineLayout =
       device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("Render Pipeline Layout"),
@@ -260,7 +264,7 @@ impl State {
         &device,
         &render_pipeline_layout,
         config.format,
-        None,
+        Some(texture::Texture::DEPTH_FORMAT),
         &[mesh::MeshVertex::desc(), InstanceRaw::desc()],
         shader,
       )
@@ -282,6 +286,7 @@ impl State {
       instances,
       instance_buffer,
       clear_color,
+      depth_texture,
       window,
     }
   }
@@ -294,6 +299,8 @@ impl State {
       self.config.height = new_size.height;
 
       self.surface.configure(&self.device, &self.config);
+      self.depth_texture =
+        texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
     }
   }
 
@@ -356,7 +363,14 @@ impl State {
             store: wgpu::StoreOp::Store,
           },
         })],
-        depth_stencil_attachment: None,
+        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+          view: &self.depth_texture.view,
+          depth_ops: Some(wgpu::Operations {
+            load: wgpu::LoadOp::Clear(1.0),
+            store: wgpu::StoreOp::Store,
+          }),
+          stencil_ops: None,
+        }),
         occlusion_query_set: None,
         timestamp_writes: None,
       });
