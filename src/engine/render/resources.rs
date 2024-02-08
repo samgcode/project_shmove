@@ -49,6 +49,7 @@ pub async fn load_mesh(
           model.mesh.normals[i * 3 + 1],
           model.mesh.normals[i * 3 + 2],
         ],
+        color: [1.0; 3],
       })
       .collect::<Vec<_>>();
 
@@ -67,7 +68,6 @@ pub async fn load_mesh(
       vertex_buffer,
       index_buffer,
       num_elements: model.mesh.indices.len() as u32,
-      color: [1.0; 3],
     }
   };
 

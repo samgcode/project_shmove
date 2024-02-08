@@ -2,7 +2,7 @@ use cgmath::prelude::*;
 use wgpu::util::DeviceExt;
 use winit::{event::WindowEvent, window::Window};
 
-use mesh::DrawModel;
+use mesh::{DrawModel, Vertex};
 
 mod camera;
 mod mesh;
@@ -111,6 +111,7 @@ pub struct State {
   queue: wgpu::Queue,
   config: wgpu::SurfaceConfiguration,
   size: winit::dpi::PhysicalSize<u32>,
+  render_pipeline: wgpu::RenderPipeline,
   camera: camera::Camera,
   projection: camera::Projection,
   camera_uniform: CameraUniform,
@@ -243,12 +244,35 @@ impl State {
 
     let clear_color = wgpu::Color::BLACK;
 
+    let render_pipeline_layout: wgpu::PipelineLayout =
+      device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("Render Pipeline Layout"),
+        bind_group_layouts: &[&camera_bind_group_layout],
+        push_constant_ranges: &[],
+      });
+
+    let render_pipeline = {
+      let shader = wgpu::ShaderModuleDescriptor {
+        label: Some("Normal Shader"),
+        source: wgpu::ShaderSource::Wgsl(include_str!("render/shader/shader.wgsl").into()),
+      };
+      create_render_pipeline(
+        &device,
+        &render_pipeline_layout,
+        config.format,
+        None,
+        &[mesh::MeshVertex::desc(), InstanceRaw::desc()],
+        shader,
+      )
+    };
+
     Self {
       surface,
       device,
       queue,
       config,
       size,
+      render_pipeline,
       camera,
       projection,
       camera_uniform,
@@ -337,9 +361,8 @@ impl State {
         timestamp_writes: None,
       });
 
-
       render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-      // render_pass.set_pipeline(&self.render_pipeline);
+      render_pass.set_pipeline(&self.render_pipeline);
       render_pass.draw_mesh_instanced(
         &self.obj,
         0..self.instances.len() as u32,
@@ -359,4 +382,59 @@ impl State {
   pub fn size(&self) -> winit::dpi::PhysicalSize<u32> {
     self.size
   }
+}
+
+fn create_render_pipeline(
+  device: &wgpu::Device,
+  layout: &wgpu::PipelineLayout,
+  color_format: wgpu::TextureFormat,
+  depth_format: Option<wgpu::TextureFormat>,
+  vertex_layouts: &[wgpu::VertexBufferLayout],
+  shader: wgpu::ShaderModuleDescriptor,
+) -> wgpu::RenderPipeline {
+  let shader = device.create_shader_module(shader);
+
+  device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+    label: Some("Render Pipeline"),
+    layout: Some(layout),
+    vertex: wgpu::VertexState {
+      module: &shader,
+      entry_point: "vs_main",
+      buffers: vertex_layouts,
+    },
+    fragment: Some(wgpu::FragmentState {
+      module: &shader,
+      entry_point: "fs_main",
+      targets: &[Some(wgpu::ColorTargetState {
+        format: color_format,
+        blend: Some(wgpu::BlendState {
+          alpha: wgpu::BlendComponent::REPLACE,
+          color: wgpu::BlendComponent::REPLACE,
+        }),
+        write_mask: wgpu::ColorWrites::ALL,
+      })],
+    }),
+    primitive: wgpu::PrimitiveState {
+      topology: wgpu::PrimitiveTopology::TriangleList,
+      strip_index_format: None,
+      front_face: wgpu::FrontFace::Ccw,
+      cull_mode: Some(wgpu::Face::Back),
+      polygon_mode: wgpu::PolygonMode::Fill,
+      unclipped_depth: false,
+      conservative: false,
+    },
+    depth_stencil: depth_format.map(|format| wgpu::DepthStencilState {
+      format,
+      depth_write_enabled: true,
+      depth_compare: wgpu::CompareFunction::Less,
+      stencil: wgpu::StencilState::default(),
+      bias: wgpu::DepthBiasState::default(),
+    }),
+    multisample: wgpu::MultisampleState {
+      count: 1,
+      mask: !0,
+      alpha_to_coverage_enabled: false,
+    },
+    multiview: None,
+  })
 }
