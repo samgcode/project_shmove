@@ -1,6 +1,6 @@
 use cgmath::prelude::*;
 use wgpu::util::DeviceExt;
-use winit::{event::WindowEvent, window::Window};
+use winit::window::Window;
 
 use mesh::{DrawModel, Vertex};
 
@@ -316,10 +316,6 @@ impl State {
       self.depth_texture =
         texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
     }
-  }
-
-  pub fn input(&mut self, _event: &WindowEvent) -> bool {
-    false
   }
 
   pub fn update(&mut self, dt: instant::Duration) {
