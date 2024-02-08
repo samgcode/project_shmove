@@ -11,7 +11,7 @@ pub async fn run() {
 
   let event_loop = EventLoop::new();
   let window = WindowBuilder::new()
-    .with_title("Super Project Yourself At Unreasonably High Velocities Across Vast Distances Through A Strange Void Full Of Solid Color Abstract Shapes 3D 64 (SPYAUHVAVDTASVFOSCAS 3D64)")
+    .with_title("Super Project Yourself At Unreasonably High Velocities Across Vast Distances Over Solid Color Abstract Shapes To Bring A Strange Creature To An Unknown Position In The Void 3D 64 (SPYAUHVAVDOSCASTBASCTAUPITV 3D64)")
     .build(&event_loop).unwrap();
 
   let mut state = render::State::new(window).await;
@@ -22,8 +22,13 @@ pub async fn run() {
       ref event,
       window_id,
     } if window_id == state.window().id() && !state.input(event) => match event {
-      #[cfg(not(target_arch = "wasm32"))]
       WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+      WindowEvent::Resized(physical_size) => {
+        state.resize(*physical_size);
+      }
+      WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+        state.resize(**new_inner_size);
+      }
       _ => {}
     },
     Event::RedrawRequested(window_id) if window_id == state.window().id() => {

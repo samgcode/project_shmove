@@ -1,10 +1,41 @@
+use cgmath::prelude::*;
+use wgpu::util::DeviceExt;
 use winit::{event::WindowEvent, window::Window};
+
+mod camera;
+
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct CameraUniform {
+  view_position: [f32; 4],
+  view_proj: [[f32; 4]; 4],
+}
+
+impl CameraUniform {
+  fn new() -> Self {
+    Self {
+      view_position: [0.0; 4],
+      view_proj: cgmath::Matrix4::identity().into(),
+    }
+  }
+
+  fn update_view_proj(&mut self, camera: &camera::Camera, projection: &camera::Projection) {
+    self.view_position = camera.position.to_homogeneous().into();
+    self.view_proj = (projection.calc_matrix() * camera.calc_matrix()).into()
+  }
+}
 
 pub struct State {
   surface: wgpu::Surface,
   device: wgpu::Device,
   queue: wgpu::Queue,
+  config: wgpu::SurfaceConfiguration,
   size: winit::dpi::PhysicalSize<u32>,
+  camera: camera::Camera,
+  projection: camera::Projection,
+  camera_uniform: CameraUniform,
+  camera_buffer: wgpu::Buffer,
+  camera_bind_group: wgpu::BindGroup,
   clear_color: wgpu::Color,
   window: Window,
 }
@@ -60,25 +91,87 @@ impl State {
     };
     surface.configure(&device, &config);
 
+    let camera = camera::Camera::new((0.0, 5.0, 10.0), cgmath::Deg(-90.0), cgmath::Deg(-20.0));
+    let projection =
+      camera::Projection::new(config.width, config.height, cgmath::Deg(45.0), 0.1, 100.0);
+
+    let mut camera_uniform = CameraUniform::new();
+    camera_uniform.update_view_proj(&camera, &projection);
+
+    let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+      label: Some("Camera Buffer"),
+      contents: bytemuck::cast_slice(&[camera_uniform]),
+      usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+    });
+
+    let camera_bind_group_layout =
+      device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("camera_bind_group_layout"),
+        entries: &[wgpu::BindGroupLayoutEntry {
+          binding: 0,
+          visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+          ty: wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Uniform,
+            has_dynamic_offset: false,
+            min_binding_size: None,
+          },
+          count: None,
+        }],
+      });
+
+    let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+      label: Some("camera_bind_group"),
+      layout: &camera_bind_group_layout,
+      entries: &[wgpu::BindGroupEntry {
+        binding: 0,
+        resource: camera_buffer.as_entire_binding(),
+      }],
+    });
+
     let clear_color = wgpu::Color::BLACK;
 
     Self {
       surface,
       device,
       queue,
+      config,
       size,
+      camera,
+      projection,
+      camera_uniform,
+      camera_buffer,
+      camera_bind_group,
       clear_color,
       window,
     }
   }
 
-  pub fn resize(&mut self, _new_size: winit::dpi::PhysicalSize<u32>) {}
+  pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+    if new_size.width > 0 && new_size.height > 0 {
+      self.projection.resize(new_size.width, new_size.height);
+      self.size = new_size;
+      self.config.width = new_size.width;
+      self.config.height = new_size.height;
+
+      self.surface.configure(&self.device, &self.config);
+    }
+  }
 
   pub fn input(&mut self, _event: &WindowEvent) -> bool {
     false
   }
 
-  pub fn update(&mut self, _dt: instant::Duration) {}
+  pub fn update(&mut self, _dt: instant::Duration) {
+    self
+      .camera_uniform
+      .update_view_proj(&self.camera, &self.projection);
+
+    self.queue.write_buffer(
+      &self.camera_buffer,
+      0,
+      bytemuck::cast_slice(&[self.camera_uniform]),
+    );
+  }
 
   pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
     let output = self.surface.get_current_texture()?;
