@@ -16,7 +16,6 @@ pub async fn load_string(file_name: &str) -> anyhow::Result<String> {
 pub async fn load_mesh(
   file_name: &str,
   device: &wgpu::Device,
-  color: [f32; 3]
 ) -> anyhow::Result<mesh::Mesh> {
   let obj_text = load_string(file_name).await?;
   let obj_cursor = Cursor::new(obj_text);
@@ -50,7 +49,6 @@ pub async fn load_mesh(
           model.mesh.normals[i * 3 + 1],
           model.mesh.normals[i * 3 + 2],
         ],
-        color
       })
       .collect::<Vec<_>>();
 

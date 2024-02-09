@@ -7,7 +7,7 @@ use mesh::{DrawModel, Vertex};
 use crate::engine::camera;
 use light::Light;
 
-use super::physics::game_object::Transform;
+use super::physics::game_object::GameObject;
 
 mod light;
 mod mesh;
@@ -42,26 +42,28 @@ impl CameraUniform {
 struct InstanceRaw {
   model: [[f32; 4]; 4],
   normal: [[f32; 3]; 3],
+  color: [f32; 3],
 }
 
 impl InstanceRaw {
-  pub fn from_transform(transform: &Transform) -> Self {
+  pub fn from_game_object(game_object: &GameObject) -> Self {
     use cgmath::{Quaternion, Rad};
-    let amount_x = Quaternion::from_angle_x(Rad(transform.rotation.x));
-    let amount_y = Quaternion::from_angle_y(Rad(transform.rotation.y));
-    let amount_z = Quaternion::from_angle_z(Rad(transform.rotation.z));
+    let amount_x = Quaternion::from_angle_x(Rad(game_object.transform.rotation.x));
+    let amount_y = Quaternion::from_angle_y(Rad(game_object.transform.rotation.y));
+    let amount_z = Quaternion::from_angle_z(Rad(game_object.transform.rotation.z));
     let rotation = amount_x * amount_y * amount_z;
 
-    let model = cgmath::Matrix4::from_translation(transform.position)
+    let model = cgmath::Matrix4::from_translation(game_object.transform.position)
       * cgmath::Matrix4::from(rotation)
       * cgmath::Matrix4::from_nonuniform_scale(
-        transform.scale.x,
-        transform.scale.y,
-        transform.scale.z,
+        game_object.transform.scale.x,
+        game_object.transform.scale.y,
+        game_object.transform.scale.z,
       );
     Self {
       model: model.into(),
       normal: cgmath::Matrix3::from(rotation).into(),
+      color: game_object.color,
     }
   }
 }
@@ -106,6 +108,11 @@ impl mesh::Vertex for InstanceRaw {
         wgpu::VertexAttribute {
           offset: mem::size_of::<[f32; 22]>() as wgpu::BufferAddress,
           shader_location: 11,
+          format: wgpu::VertexFormat::Float32x3,
+        },
+        wgpu::VertexAttribute {
+          offset: mem::size_of::<[f32; 25]>() as wgpu::BufferAddress,
+          shader_location: 12,
           format: wgpu::VertexFormat::Float32x3,
         },
       ],
@@ -229,13 +236,13 @@ impl State {
       [1.0, 1.0, 1.0],
     );
 
-    let obj = resources::load_mesh("cube.obj", &device, [0.0, 1.0, 0.5])
+    let obj = resources::load_mesh("cube.obj", &device)
       .await
       .unwrap();
 
     let instance_buffer = device.create_buffer(&wgpu::BufferDescriptor {
       label: Some("Instance Buffer"),
-      size: (std::mem::size_of::<[f32; 25]>() as u64) * MAX_INSTANCES,
+      size: (std::mem::size_of::<InstanceRaw>() as u64) * MAX_INSTANCES,
       usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
       mapped_at_creation: false,
     });
@@ -304,7 +311,7 @@ impl State {
     &mut self,
     camera: &camera::Camera,
     dt: instant::Duration,
-    objects: &Vec<Transform>,
+    objects: &Vec<GameObject>,
   ) {
     self
       .camera_uniform
@@ -318,7 +325,7 @@ impl State {
 
     let instance_data = objects
       .iter()
-      .map(InstanceRaw::from_transform)
+      .map(InstanceRaw::from_game_object)
       .collect::<Vec<_>>();
 
     self.queue.write_buffer(

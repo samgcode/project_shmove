@@ -9,7 +9,6 @@ pub trait Vertex {
 pub struct MeshVertex {
   pub position: [f32; 3],
   pub normal: [f32; 3],
-  pub color: [f32; 3],
 }
 
 impl Vertex for MeshVertex {
@@ -27,11 +26,6 @@ impl Vertex for MeshVertex {
         wgpu::VertexAttribute {
           offset: mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
           shader_location: 1,
-          format: wgpu::VertexFormat::Float32x3,
-        },
-        wgpu::VertexAttribute {
-          offset: mem::size_of::<[f32; 6]>() as wgpu::BufferAddress,
-          shader_location: 2,
           format: wgpu::VertexFormat::Float32x3,
         },
       ],

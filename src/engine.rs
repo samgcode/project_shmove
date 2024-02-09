@@ -8,6 +8,8 @@ use winit::{
 pub use camera::Camera;
 pub use game_state::GameState;
 
+use self::physics::game_object::{GameObject, Transform};
+
 pub mod camera;
 mod game_state;
 pub mod physics;
@@ -30,16 +32,12 @@ pub async fn run(mut game: impl Scene + 'static) {
   let mut game_state = GameState::new();
   let mut render_state = render::State::new(window, &game_state.camera).await;
 
-  let game_object = physics::game_object::Transform::from_components(
-    Some(cgmath::Vector3 {
-      x: 1.0,
-      y: 1.0,
-      z: 1.0,
-    }),
-    Some(cgmath::Vector3 { x: 0.0, y: 45.0, z: 0.0 }),
-    Some(cgmath::Vector3 { x: 3.0, y: 0.5, z: 3.0 }),
-  );
-  game_state.transforms = vec![game_object];
+  let game_object = GameObject {
+    transform: Transform::default(),
+    color: [1.0, 0.0, 0.75]
+  };
+  
+  game_state.game_objects = vec![game_object];
 
   event_loop.run(move |event, _, control_flow| {
     physics_state.input.handle_event(&event);
@@ -61,7 +59,7 @@ pub async fn run(mut game: impl Scene + 'static) {
         let now = instant::Instant::now();
         let dt = now - last_render_time;
         last_render_time = now;
-        render_state.update(&game_state.camera, dt, &game_state.transforms);
+        render_state.update(&game_state.camera, dt, &game_state.game_objects);
 
         match render_state.render() {
           Ok(_) => {}

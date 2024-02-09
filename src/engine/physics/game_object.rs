@@ -41,3 +41,8 @@ impl Unit for Vector3<f32> {
     Self { x: 1.0, y: 1.0, z: 1.0 }
   }
 }
+
+pub struct GameObject {
+  pub transform: Transform,
+  pub color: [f32; 3],
+}
