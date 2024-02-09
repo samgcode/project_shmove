@@ -1,8 +1,8 @@
-use super::{camera, physics::game_object};
+use super::{camera, GameObject};
 
 pub struct GameState {
   pub camera: camera::Camera,
-  pub game_objects: Vec<game_object::GameObject>
+  pub game_objects: Vec<GameObject>
 }
 
 impl GameState {

@@ -7,8 +7,7 @@ use winit::{
 
 pub use camera::Camera;
 pub use game_state::GameState;
-
-use self::physics::game_object::{GameObject, Transform};
+pub use self::physics::game_object::{GameObject, Transform};
 
 pub mod camera;
 mod game_state;
@@ -16,7 +15,9 @@ pub mod physics;
 pub mod render;
 
 pub trait Scene {
-  fn update(&mut self, sgame: &mut GameState, input: &physics::input::Input, dt: Duration);
+  fn start(&mut self, game: &mut GameState);
+  fn update(&mut self, game: &mut GameState, input: &physics::input::Input, dt: Duration);
+  fn get_active_game_objects(&mut self) -> Vec<&GameObject>;
 }
 
 pub async fn run(mut game: impl Scene + 'static) {
@@ -32,12 +33,8 @@ pub async fn run(mut game: impl Scene + 'static) {
   let mut game_state = GameState::new();
   let mut render_state = render::State::new(window, &game_state.camera).await;
 
-  let game_object = GameObject {
-    transform: Transform::default(),
-    color: [1.0, 0.0, 0.75]
-  };
-  
-  game_state.game_objects = vec![game_object];
+
+  game.start(&mut game_state);
 
   event_loop.run(move |event, _, control_flow| {
     physics_state.input.handle_event(&event);
@@ -59,7 +56,7 @@ pub async fn run(mut game: impl Scene + 'static) {
         let now = instant::Instant::now();
         let dt = now - last_render_time;
         last_render_time = now;
-        render_state.update(&game_state.camera, dt, &game_state.game_objects);
+        render_state.update(&game_state.camera, dt, game.get_active_game_objects());
 
         match render_state.render() {
           Ok(_) => {}

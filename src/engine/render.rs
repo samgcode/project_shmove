@@ -46,7 +46,7 @@ struct InstanceRaw {
 }
 
 impl InstanceRaw {
-  pub fn from_game_object(game_object: &GameObject) -> Self {
+  pub fn from_game_object(game_object: &&GameObject) -> Self {
     use cgmath::{Quaternion, Rad};
     let amount_x = Quaternion::from_angle_x(Rad(game_object.transform.rotation.x));
     let amount_y = Quaternion::from_angle_y(Rad(game_object.transform.rotation.y));
@@ -311,7 +311,7 @@ impl State {
     &mut self,
     camera: &camera::Camera,
     dt: instant::Duration,
-    objects: &Vec<GameObject>,
+    objects: Vec<&GameObject>,
   ) {
     self
       .camera_uniform
