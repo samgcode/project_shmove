@@ -1,4 +1,3 @@
-use instant::Duration;
 use winit::{
   event::*,
   event_loop::{ControlFlow, EventLoop},
@@ -16,7 +15,7 @@ pub mod render;
 
 pub trait Scene {
   fn start(&mut self, game: &mut GameState);
-  fn update(&mut self, game: &mut GameState, input: &physics::input::Input, dt: Duration);
+  fn update(&mut self, game: &mut GameState, input: &physics::input::Input, dt: f32);
   fn get_active_game_objects(&mut self) -> Vec<&GameObject>;
 }
 
@@ -66,7 +65,7 @@ pub async fn run(mut game: impl Scene + 'static) {
         }
 
         physics_state.input.update();
-        game.update(&mut game_state, &physics_state.input, dt);
+        game.update(&mut game_state, &physics_state.input, dt.as_secs_f32());
       }
       Event::MainEventsCleared => {
         render_state.window().request_redraw();

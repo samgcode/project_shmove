@@ -39,11 +39,11 @@ impl Input {
 
   fn mouse_moved(&mut self, mouse_dx: f64, mouse_dy: f64) {
     // remote desktop mode
-    self.mouse_position.x = mouse_dx as f32;
-    self.mouse_position.y = mouse_dy as f32;
+    // self.mouse_position.x = mouse_dx as f32;
+    // self.mouse_position.y = mouse_dy as f32;
     // regular windows mode
-    // self.mouse_position.x += mouse_dx as f32;
-    // self.mouse_position.y += mouse_dy as f32;
+    self.mouse_position.x += mouse_dx as f32;
+    self.mouse_position.y += mouse_dy as f32;
   }
   fn process_scroll(&mut self, delta: f32) {
     self.scroll_speed = delta;
