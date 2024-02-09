@@ -4,19 +4,17 @@ use winit::window::Window;
 
 use mesh::{DrawModel, Vertex};
 
-use light::Light;
 use crate::engine::camera;
+use light::Light;
+
+use super::physics::game_object::Transform;
 
 mod light;
 mod mesh;
 mod resources;
 mod texture;
 
-const ROTATION_SPEED: cgmath::Vector3<f32> = cgmath::Vector3::new(
-  0.5 * std::f32::consts::PI / 120.0,
-  0.0,
-  0.5 * std::f32::consts::PI / 90.0,
-);
+const MAX_INSTANCES: u64 = 100;
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -39,27 +37,33 @@ impl CameraUniform {
   }
 }
 
-struct Instance {
-  position: cgmath::Vector3<f32>,
-  rotation: cgmath::Quaternion<f32>,
-}
-
-impl Instance {
-  fn to_raw(&self) -> InstanceRaw {
-    let model =
-      cgmath::Matrix4::from_translation(self.position) * cgmath::Matrix4::from(self.rotation);
-    InstanceRaw {
-      model: model.into(),
-      normal: cgmath::Matrix3::from(self.rotation).into(),
-    }
-  }
-}
-
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct InstanceRaw {
   model: [[f32; 4]; 4],
   normal: [[f32; 3]; 3],
+}
+
+impl InstanceRaw {
+  pub fn from_transform(transform: &Transform) -> Self {
+    use cgmath::{Quaternion, Rad};
+    let amount_x = Quaternion::from_angle_x(Rad(transform.rotation.x));
+    let amount_y = Quaternion::from_angle_y(Rad(transform.rotation.y));
+    let amount_z = Quaternion::from_angle_z(Rad(transform.rotation.z));
+    let rotation = amount_x * amount_y * amount_z;
+
+    let model = cgmath::Matrix4::from_translation(transform.position)
+      * cgmath::Matrix4::from(rotation)
+      * cgmath::Matrix4::from_nonuniform_scale(
+        transform.scale.x,
+        transform.scale.y,
+        transform.scale.z,
+      );
+    Self {
+      model: model.into(),
+      normal: cgmath::Matrix3::from(rotation).into(),
+    }
+  }
 }
 
 impl mesh::Vertex for InstanceRaw {
@@ -121,8 +125,8 @@ pub struct State {
   camera_buffer: wgpu::Buffer,
   camera_bind_group: wgpu::BindGroup,
   obj: mesh::Mesh,
-  instances: Vec<Instance>,
   instance_buffer: wgpu::Buffer,
+  instance_count: u32,
   clear_color: wgpu::Color,
   depth_texture: texture::Texture,
   light: Light,
@@ -225,34 +229,15 @@ impl State {
       [1.0, 1.0, 1.0],
     );
 
-    let obj = resources::load_mesh("cube.obj", &device).await.unwrap();
+    let obj = resources::load_mesh("cube.obj", &device, [0.0, 1.0, 0.5])
+      .await
+      .unwrap();
 
-    const NUM_INSTANCES_PER_ROW: u32 = 10;
-    const SPACE_BETWEEN: f32 = 3.0;
-    let instances = (0..NUM_INSTANCES_PER_ROW)
-      .flat_map(|z| {
-        (0..NUM_INSTANCES_PER_ROW).map(move |x| {
-          let x = SPACE_BETWEEN * (x as f32 - NUM_INSTANCES_PER_ROW as f32 / 2.0);
-          let z = SPACE_BETWEEN * (z as f32 - NUM_INSTANCES_PER_ROW as f32 / 2.0);
-
-          let position = cgmath::Vector3 { x, y: 0.0, z };
-
-          let rotation = if position.is_zero() {
-            cgmath::Quaternion::from_axis_angle(cgmath::Vector3::unit_z(), cgmath::Deg(0.0))
-          } else {
-            cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(45.0))
-          };
-
-          Instance { position, rotation }
-        })
-      })
-      .collect::<Vec<_>>();
-
-    let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
-    let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+    let instance_buffer = device.create_buffer(&wgpu::BufferDescriptor {
       label: Some("Instance Buffer"),
-      contents: bytemuck::cast_slice(&instance_data),
+      size: (std::mem::size_of::<[f32; 25]>() as u64) * MAX_INSTANCES,
       usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+      mapped_at_creation: false,
     });
 
     let clear_color = wgpu::Color::BLACK;
@@ -293,7 +278,7 @@ impl State {
       camera_buffer,
       camera_bind_group,
       obj,
-      instances,
+      instance_count: 0,
       instance_buffer,
       clear_color,
       depth_texture,
@@ -315,7 +300,12 @@ impl State {
     }
   }
 
-  pub fn update(&mut self, camera: &camera::Camera, dt: instant::Duration) {
+  pub fn update(
+    &mut self,
+    camera: &camera::Camera,
+    dt: instant::Duration,
+    objects: &Vec<Transform>,
+  ) {
     self
       .camera_uniform
       .update_view_proj(camera, &self.projection);
@@ -326,24 +316,17 @@ impl State {
       bytemuck::cast_slice(&[self.camera_uniform]),
     );
 
-    for instance in &mut self.instances {
-      let amount_x = cgmath::Quaternion::from_angle_x(cgmath::Rad(ROTATION_SPEED.x));
-      let amount_y = cgmath::Quaternion::from_angle_y(cgmath::Rad(ROTATION_SPEED.y));
-      let amount_z = cgmath::Quaternion::from_angle_z(cgmath::Rad(ROTATION_SPEED.z));
-      let current = instance.rotation;
-      instance.rotation = amount_x * amount_y * amount_z * current;
-    }
-
-    let instance_data = self
-      .instances
+    let instance_data = objects
       .iter()
-      .map(Instance::to_raw)
+      .map(InstanceRaw::from_transform)
       .collect::<Vec<_>>();
+
     self.queue.write_buffer(
       &self.instance_buffer,
       0,
       bytemuck::cast_slice(&instance_data),
     );
+    self.instance_count = instance_data.len() as u32;
 
     let old_position: cgmath::Vector3<_> = self.light.uniform.position.into();
     self.light.uniform.position = (cgmath::Quaternion::from_axis_angle(
@@ -403,7 +386,7 @@ impl State {
       render_pass.set_pipeline(&self.render_pipeline);
       render_pass.draw_mesh_instanced(
         &self.obj,
-        0..self.instances.len() as u32,
+        0..self.instance_count,
         &self.camera_bind_group,
         &self.light.bind_group,
       );

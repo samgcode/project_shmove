@@ -1,13 +1,12 @@
 use cgmath::*;
 use instant::Duration;
-use winit::event::VirtualKeyCode;
 use std::f32::consts::FRAC_PI_2;
+use winit::event::VirtualKeyCode;
 
-use engine::physics::input::Input;
+use engine::{physics::input::Input, Camera, GameState, Scene};
 use project_shmove::engine;
 
 const SAFE_FRAC_PI_2: f32 = FRAC_PI_2 - 0.0001;
-
 
 struct TestScene {
   speed: f32,
@@ -21,14 +20,18 @@ impl TestScene {
     Self {
       speed: 10.0,
       sensitivity: 0.1,
-      direction: Vector3 { x: 0.0, y: 0.0, z: 0.0 },
+      direction: Vector3 {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+      },
       mouse_speed: Vector2 { x: 0.0, y: 0.0 },
     }
   }
 }
 
-impl engine::Scene for TestScene {
-  fn update(&mut self, game: &mut engine::GameState, input: &Input, dt: Duration) {
+impl Scene for TestScene {
+  fn update(&mut self, game: &mut GameState, input: &Input, dt: Duration) {
     if input.key_pressed(VirtualKeyCode::W) {
       self.direction.x = 1.0;
     } else if input.key_pressed(VirtualKeyCode::S) {
@@ -59,7 +62,7 @@ impl engine::Scene for TestScene {
   }
 }
 impl TestScene {
-  pub fn update_camera(&self, camera: &mut engine::camera::Camera, dt: Duration) {
+  pub fn update_camera(&self, camera: &mut Camera, dt: Duration) {
     let dt = dt.as_secs_f32();
 
     let (yaw_sin, yaw_cos) = camera.yaw.0.sin_cos();

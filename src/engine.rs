@@ -5,13 +5,13 @@ use winit::{
   window::WindowBuilder,
 };
 
+pub use camera::Camera;
+pub use game_state::GameState;
+
 pub mod camera;
+mod game_state;
 pub mod physics;
 pub mod render;
-
-pub struct GameState {
-  pub camera: camera::Camera,
-}
 
 pub trait Scene {
   fn update(&mut self, sgame: &mut GameState, input: &physics::input::Input, dt: Duration);
@@ -27,10 +27,19 @@ pub async fn run(mut game: impl Scene + 'static) {
 
   let mut physics_state = physics::State::new();
   let mut last_render_time = instant::Instant::now();
-  let mut game_state = GameState {
-    camera: camera::Camera::new((0.0, 5.0, 10.0), cgmath::Deg(-90.0), cgmath::Deg(-20.0)),
-  };
+  let mut game_state = GameState::new();
   let mut render_state = render::State::new(window, &game_state.camera).await;
+
+  let game_object = physics::game_object::Transform::from_components(
+    Some(cgmath::Vector3 {
+      x: 1.0,
+      y: 1.0,
+      z: 1.0,
+    }),
+    Some(cgmath::Vector3 { x: 0.0, y: 45.0, z: 0.0 }),
+    Some(cgmath::Vector3 { x: 3.0, y: 0.5, z: 3.0 }),
+  );
+  game_state.transforms = vec![game_object];
 
   event_loop.run(move |event, _, control_flow| {
     physics_state.input.handle_event(&event);
@@ -52,7 +61,7 @@ pub async fn run(mut game: impl Scene + 'static) {
         let now = instant::Instant::now();
         let dt = now - last_render_time;
         last_render_time = now;
-        render_state.update(&game_state.camera, dt);
+        render_state.update(&game_state.camera, dt, &game_state.transforms);
 
         match render_state.render() {
           Ok(_) => {}
