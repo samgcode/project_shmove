@@ -46,11 +46,11 @@ struct InstanceRaw {
 }
 
 impl InstanceRaw {
-  pub fn from_game_object(game_object: &&GameObject) -> Self {
-    use cgmath::{Quaternion, Rad};
-    let amount_x = Quaternion::from_angle_x(Rad(game_object.transform.rotation.x));
-    let amount_y = Quaternion::from_angle_y(Rad(game_object.transform.rotation.y));
-    let amount_z = Quaternion::from_angle_z(Rad(game_object.transform.rotation.z));
+  pub fn from_game_object(game_object: &&mut GameObject) -> Self {
+    use cgmath::{Deg, Quaternion};
+    let amount_x = Quaternion::from_angle_x(Deg(game_object.transform.rotation.x));
+    let amount_y = Quaternion::from_angle_y(Deg(game_object.transform.rotation.y));
+    let amount_z = Quaternion::from_angle_z(Deg(game_object.transform.rotation.z));
     let rotation = amount_x * amount_y * amount_z;
 
     let model = cgmath::Matrix4::from_translation(game_object.transform.position)
@@ -236,9 +236,7 @@ impl State {
       [1.0, 1.0, 1.0],
     );
 
-    let obj = resources::load_mesh("cube.obj", &device)
-      .await
-      .unwrap();
+    let obj = resources::load_mesh("cube.obj", &device).await.unwrap();
 
     let instance_buffer = device.create_buffer(&wgpu::BufferDescriptor {
       label: Some("Instance Buffer"),
@@ -311,7 +309,7 @@ impl State {
     &mut self,
     camera: &camera::Camera,
     dt: instant::Duration,
-    objects: Vec<&GameObject>,
+    objects: Vec<&mut GameObject>,
   ) {
     self
       .camera_uniform

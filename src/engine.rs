@@ -16,7 +16,7 @@ pub mod render;
 pub trait Scene {
   fn start(&mut self, game: &mut GameState);
   fn update(&mut self, game: &mut GameState, input: &physics::input::Input, dt: f32);
-  fn get_active_game_objects(&mut self) -> Vec<&GameObject>;
+  fn get_active_game_objects(&mut self) -> Vec<&mut GameObject>;
 }
 
 pub async fn run(mut game: impl Scene + 'static) {
@@ -31,7 +31,6 @@ pub async fn run(mut game: impl Scene + 'static) {
   let mut last_render_time = instant::Instant::now();
   let mut game_state = GameState::new();
   let mut render_state = render::State::new(window, &game_state.camera).await;
-
 
   game.start(&mut game_state);
 
@@ -65,6 +64,7 @@ pub async fn run(mut game: impl Scene + 'static) {
         }
 
         physics_state.input.update();
+        game_state.collision.update(game.get_active_game_objects());
         game.update(&mut game_state, &physics_state.input, dt.as_secs_f32());
       }
       Event::MainEventsCleared => {

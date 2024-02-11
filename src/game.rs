@@ -1,20 +1,25 @@
 use cgmath::{Vector3, Zero};
 use winit::event::VirtualKeyCode;
 
-use engine::{physics::input::Input, GameObject, GameState, Scene, Transform};
-use project_shmove::engine::{self, physics::collision::colliding};
+use engine::{physics::input::Input, GameObject, GameState, Scene};
+use project_shmove::engine::{
+  self,
+  physics::collision::{CollisionEvent, Tag},
+};
 
 use self::camera::CameraController;
 
 mod camera;
+
+const GRAVITY: f32 = -0.0025;
 
 pub struct GameScene {
   camera_controller: CameraController,
   camera_speed: f32,
   player: GameObject,
   ground: GameObject,
-  timer: f32,
-  prev: bool,
+  grav: f32,
+  velocity: Vector3<f32>,
 }
 
 impl GameScene {
@@ -22,50 +27,47 @@ impl GameScene {
     Self {
       camera_controller: CameraController { sensitivity: 1.0 },
       camera_speed: 5.0,
-      player: GameObject {
-        transform: Transform::default(),
-        color: [1.0, 0.0, 0.0],
-      },
-      ground: GameObject {
-        transform: Transform::default(),
-        color: [1.0, 0.0, 0.0],
-      },
-      timer: 0.0,
-      prev: false,
+      player: GameObject::new(
+        (0.0, 8.0, 0.0),
+        (0.0, 0.0, 0.0),
+        (1.0, 2.0, 1.0),
+        [1.0, 0.0, 0.0],
+        Tag::Player,
+      ),
+      ground: GameObject::new(
+        (0.0, 0.0, 0.0),
+        (45.0, 0.0, 0.0),
+        (0.8, 0.5, 2.0),
+        [0.0, 1.0, 0.0],
+        Tag::Platform,
+      ),
+      grav: GRAVITY,
+      velocity: Vector3::zero(),
     }
   }
 }
 
 impl Scene for GameScene {
-  fn start(&mut self, _game: &mut GameState) {
-    self.player.transform.scale = Vector3 {
-      x: 1.0,
-      y: 2.0,
-      z: 1.0,
-    };
-    self.player.color = [0.0, 0.0, 1.0];
-    self.player.transform.position = Vector3 {
-      x: 0.0,
-      y: 8.0,
-      z: 0.0,
-    };
-    self.ground.transform.scale = Vector3 {
-      x: 10.0,
-      y: 0.5,
-      z: 10.0,
-    };
-    self.ground.transform.rotation = Vector3 {
-      x: 20.0,
-      y: 20.0,
-      z: 0.0,
-    };
-    self.ground.color = [0.0, 1.0, 0.0];
+  fn start(&mut self, game: &mut GameState) {
+    self.player.register_collision(&mut game.collision);
+    self.ground.register_collision(&mut game.collision);
   }
 
   fn update(&mut self, game: &mut GameState, input: &Input, dt: f32) {
-    self.timer += 1.0;
+    if let Some(collision_event) = self.player.collision {
+      self.player.transform.position -= collision_event.normal * (collision_event.depth + 0.02);
+      self.velocity = Vector3::zero();
+    }
 
     let mut direction = Vector3::zero();
+
+    if input.key_pressed(VirtualKeyCode::Up) {
+      self.velocity.x += 1.0 * dt;
+    } else if input.key_pressed(VirtualKeyCode::Down) {
+      self.velocity.x -= 1.0 * dt;
+    } else {
+      self.velocity.x = 0.0;
+    }
 
     if input.key_pressed(VirtualKeyCode::W) {
       direction.x = 1.0;
@@ -92,23 +94,14 @@ impl Scene for GameScene {
       dt,
     );
 
-    self.player.transform.position.y -= 2.0 * dt;
-    let collision = colliding(&self.player, &self.ground);
-    if collision.colliding != self.prev {
-      if collision.colliding {
-        println!(
-          "depth: {:?}, normal: {:?}",
-          collision.depth, collision.normal
-        );
-      }
-      self.prev = collision.colliding;
-    }
+    self.player.transform.position += self.velocity;
+    self.velocity.y += self.grav;
   }
 
-  fn get_active_game_objects(&mut self) -> Vec<&GameObject> {
-    let mut objects = Vec::<&GameObject>::new();
-    objects.push(&self.player);
-    objects.push(&self.ground);
+  fn get_active_game_objects(&mut self) -> Vec<&mut GameObject> {
+    let mut objects = Vec::<&mut GameObject>::new();
+    objects.push(&mut self.player);
+    objects.push(&mut self.ground);
     objects
   }
 }
