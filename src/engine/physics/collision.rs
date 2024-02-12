@@ -1,6 +1,8 @@
+use cgmath::Zero;
 use ncollide3d::{
   na::{self, Isometry3, Translation3, UnitQuaternion},
-  pipeline::{CollisionGroups, CollisionObjectSlabHandle, ContactEvent, GeometricQueryType},
+  pipeline::{CollisionGroups, CollisionObjectSlabHandle, GeometricQueryType},
+  query::{self, Contact, DefaultTOIDispatcher},
   shape::{Cuboid, ShapeHandle},
   world::CollisionWorld,
 };
@@ -8,13 +10,20 @@ use std::{collections::HashMap, f32::consts::PI};
 
 use crate::engine::{GameObject, Transform};
 
+#[derive(Clone, Copy, Debug)]
+pub enum EventStatus {
+  Enter,
+  Stay,
+  Leave,
+  None,
+}
+
 #[derive(Clone, Copy)]
 pub struct CollisionEvent {
-  pub colliding: bool,
+  pub status: EventStatus,
   pub depth: f32,
   pub normal: cgmath::Vector3<f32>,
-  handle: CollisionObjectSlabHandle,
-  other_handle: CollisionObjectSlabHandle,
+  pub other_handle: CollisionObjectSlabHandle,
   pub other_tag: Tag,
 }
 
@@ -22,6 +31,7 @@ pub struct CollisionEvent {
 pub enum Tag {
   Player,
   Platform,
+  None,
 }
 
 pub struct Collision {
@@ -52,7 +62,8 @@ impl Collision {
   }
 
   pub fn update(&mut self, objects: Vec<&mut GameObject>) {
-    let mut events = HashMap::<CollisionObjectSlabHandle, CollisionEvent>::new();
+    let mut events =
+      HashMap::<CollisionObjectSlabHandle, (CollisionObjectSlabHandle, Contact<f32>)>::new();
 
     for object in &objects {
       let collision_object = self.world.get_mut(object.collision_handle).unwrap();
@@ -61,20 +72,82 @@ impl Collision {
 
     self.world.update();
 
-    for event in self.world.contact_events() {
-      let collision_event = handle_contact_event(&self.world, event);
-      if let Some(e) = collision_event {
-        events.insert(e.handle, e);
-      }
+    for pair in self.world.contact_pairs(true) {
+      events.insert(pair.0, (pair.1, pair.3.deepest_contact().unwrap().contact));
+      events.insert(pair.1, (pair.0, pair.3.deepest_contact().unwrap().contact));
     }
 
     for object in objects {
-      if let Some(event) = events.get(&object.collision_handle) {
-        object.collision = Some(*event);
+      if let Some((other_handle, contact)) = events.get(&object.collision_handle) {
+        let status = match object.collision.status {
+          EventStatus::None => EventStatus::Enter,
+          EventStatus::Enter => EventStatus::Stay,
+          EventStatus::Stay => EventStatus::Stay,
+          EventStatus::Leave => EventStatus::None,
+        };
+        object.collision = CollisionEvent {
+          status,
+          depth: contact.depth,
+          normal: cgmath::Vector3 {
+            x: contact.normal.x,
+            y: contact.normal.y,
+            z: contact.normal.z,
+          },
+          other_handle: *other_handle,
+          other_tag: Tag::Platform,
+        };
       } else {
-        object.collision = None;
+        if let EventStatus::Enter | EventStatus::Stay = object.collision.status {
+          object.collision = CollisionEvent {
+            status: EventStatus::Leave,
+            ..object.collision
+          };
+        } else {
+          object.collision = CollisionEvent {
+            status: EventStatus::None,
+            depth: 0.0,
+            normal: cgmath::Vector3::zero(),
+            other_handle: CollisionObjectSlabHandle(0),
+            other_tag: Tag::None,
+          };
+        }
       }
     }
+  }
+
+  pub fn update_object(&mut self, object: &mut GameObject) {
+    let mut objects = Vec::<&mut GameObject>::new();
+    objects.push(object);
+    self.update(objects);
+  }
+
+  pub fn get_toi(
+    &mut self,
+    object: &mut Transform,
+    vel: cgmath::Vector3<f32>,
+    other_handle: CollisionObjectSlabHandle,
+  ) -> f32 {
+    let cgmath::Vector3 { x, y, z } = object.scale;
+    let collider = Cuboid::new(na::Vector3::<f32>::new(x, y, z));
+    let cgmath::Vector3 { x, y, z } = vel;
+    let velocity = na::Vector3::<f32>::new(x, y, z);
+
+    let collision_object = self.world.get_mut(other_handle).unwrap();
+    let shape = collision_object.shape().as_shape::<Cuboid<f32>>().unwrap();
+    if let Ok(Some(toi)) = query::time_of_impact::<f32>(
+      &DefaultTOIDispatcher,
+      &get_isometry(object),
+      &velocity,
+      &collider,
+      collision_object.position(),
+      &na::Vector3::<f32>::new(0.0, 0.0, 0.0),
+      shape,
+      1.0,
+      0.0,
+    ) {
+      return toi.toi;
+    }
+    1.0
   }
 
   pub fn add_collider(&mut self, object: &Transform, tag: &Tag) -> CollisionObjectSlabHandle {
@@ -86,6 +159,7 @@ impl Collision {
     let collision_group = match tag {
       Tag::Player => self.player_group,
       Tag::Platform => self.platform_group,
+      _ => self.platform_group,
     };
 
     let collision_data = *tag;
@@ -100,55 +174,6 @@ impl Collision {
 
     handle
   }
-}
-
-fn handle_contact_event(
-  world: &CollisionWorld<f32, Tag>,
-  event: &ContactEvent<CollisionObjectSlabHandle>,
-) -> Option<CollisionEvent> {
-  if let ContactEvent::Started(collider1, collider2) = event {
-    let pair = match world.contact_pair(*collider1, *collider2, true) {
-      None => return None,
-      Some(pair) => pair,
-    };
-
-    let co1 = world.collision_object(*collider1).unwrap();
-    let co2 = world.collision_object(*collider2).unwrap();
-
-    if let Tag::Player = co1.data() {
-      let contact = pair.3.deepest_contact().unwrap().contact;
-
-      return Some(CollisionEvent {
-        colliding: contact.depth > 0.0,
-        depth: contact.depth,
-        normal: cgmath::Vector3 {
-          x: contact.normal.x,
-          y: contact.normal.y,
-          z: contact.normal.z,
-        },
-        handle: pair.0,
-        other_handle: pair.1,
-        other_tag: *co2.data(),
-      });
-    }
-    if let Tag::Player = co2.data() {
-      let contact = pair.3.deepest_contact().unwrap().contact;
-
-      return Some(CollisionEvent {
-        colliding: contact.depth > 0.0,
-        depth: contact.depth,
-        normal: cgmath::Vector3 {
-          x: contact.normal.x,
-          y: contact.normal.y,
-          z: contact.normal.z,
-        },
-        handle: pair.1,
-        other_handle: pair.0,
-        other_tag: *co1.data(),
-      });
-    }
-  }
-  return None;
 }
 
 fn get_isometry(obj: &Transform) -> Isometry3<f32> {

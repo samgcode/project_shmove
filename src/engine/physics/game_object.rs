@@ -1,7 +1,7 @@
 use cgmath::{Vector3, Zero};
 use ncollide3d::pipeline::CollisionObjectSlabHandle;
 
-use super::collision::{Collision, CollisionEvent, Tag};
+use super::collision::{Collision, CollisionEvent, Tag, EventStatus};
 
 pub struct Transform {
   pub position: Vector3<f32>,
@@ -70,7 +70,7 @@ pub struct GameObject {
   pub color: [f32; 3],
   pub collision_handle: CollisionObjectSlabHandle,
   pub tag: Tag,
-  pub collision: Option<CollisionEvent>,
+  pub collision: CollisionEvent,
 }
 
 impl GameObject {
@@ -91,7 +91,13 @@ impl GameObject {
       collision_handle: CollisionObjectSlabHandle(0),
       color,
       tag,
-      collision: None,
+      collision: CollisionEvent {
+        status: EventStatus::None,
+        depth: 0.0,
+        normal: cgmath::Vector3::zero(),
+        other_handle: CollisionObjectSlabHandle(0),
+        other_tag: Tag::None,
+      },
     }
   }
 
