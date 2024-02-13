@@ -14,6 +14,7 @@
 
 ## Backend
 
+- add text and UI
 - reafactor to use nalgebra instead of cgmath for alg library #engine
 - add more reexports to #engine
 - add 4d models #render
@@ -29,23 +30,23 @@
 ## Movement
 
 - basic mechanics
-  - walking
+  - X walking
   - jumping
     - variable height (min, max)
-    - moving in mid air is the same as horizontal
+    - X moving in mid air is the same as horizontal
   - crouching while not moving: enter crouched state
     - walk slower, doesn't automatically end
 - intermediate movement
   - crouching while moving: short slide
     - gives running speed
     - automatically ends
-  - walking for a short time -> running
+  - X walking for a short time -> running
   - running
     - changing input direction significantly -> walking
     - jump -> sprint jump
-      - slightly higher fixed height jump
-      - small boost of speed initially
-      - higher speed is maintained until you land
+      - X slightly higher fixed height jump
+      - X small boost of speed initially
+      - X higher speed is maintained until you land
     - crouching while sprinting -> speed slide
       - gives an extra boost of speed until the slide ends
 - advanced movement
@@ -58,8 +59,8 @@
       - if jump height is less than max, max is increased
   - speed slide, jump -> slide boost
     - more speed than regular sprint jump but less height
-  - jumping within a short period after landing -> bunny hop
-    - essentially a sprint jump
-    - since speed hasnt fully decreased to sprint speed, the new jump is faster
+  - X jumping within a short period after landing -> bunny hop
+    - X essentially a sprint jump
+    - X since speed hasnt fully decreased to sprint speed, the new jump is faster
   - sliding within a short period of landing -> speed slide
     - gives more speed since speed compounds

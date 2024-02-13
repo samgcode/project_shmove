@@ -19,7 +19,7 @@ pub struct GameScene {
 impl GameScene {
   pub fn new() -> Self {
     Self {
-      camera_controller: CameraController::new(1.0),
+      camera_controller: CameraController::new(0.1),
       player_controller: player::Controller::new(),
       platforms: Vec::<GameObject>::new(),
     }
@@ -27,10 +27,11 @@ impl GameScene {
 
   fn create_platforms(&mut self, collision: &mut Collision) {
     #[rustfmt::skip] {
-      self.platforms.push(GameObject::new((0.0, 0.0, 0.0),(10.0, 0.0, 0.0),(5.0, 2.0, 5.0), [0.0, 1.0, 0.0], Tag::Platform));
-      self.platforms.push(GameObject::new((0.0, 0.0, 15.0),(0.0, 0.0, 0.0),(5.0, 0.5, 5.0), [0.0, 0.0, 1.0], Tag::Platform));
-      self.platforms.push(GameObject::new((5.0, 0.0, 32.0),(0.0, 0.0, 60.0),(4.0, 0.5, 5.0), [0.0, 1.0, 0.5], Tag::Platform));
-      self.platforms.push(GameObject::new((0.0, 2.0, 60.0),(-20.0, 0.0, 0.0),(5.0, 0.5, 5.0), [0.0, 0.5, 1.0], Tag::Platform));
+      self.platforms.push(GameObject::new((0.0, 0.0, 0.0),(0.0, 0.0, 0.0),(10.0, 0.0, 50.0), [1.0, 0.0, 0.0], Tag::Platform));
+      self.platforms.push(GameObject::new((30.0, 0.0, 0.0),(10.0, 0.0, 0.0),(5.0, 2.0, 5.0), [0.0, 1.0, 0.0], Tag::Platform));
+      self.platforms.push(GameObject::new((30.0, 0.0, 15.0),(0.0, 0.0, 0.0),(5.0, 0.5, 5.0), [0.0, 0.0, 1.0], Tag::Platform));
+      self.platforms.push(GameObject::new((35.0, 0.0, 32.0),(0.0, 0.0, 60.0),(4.0, 0.5, 5.0), [0.0, 1.0, 0.5], Tag::Platform));
+      self.platforms.push(GameObject::new((30.0, 2.0, 60.0),(-20.0, 0.0, 0.0),(5.0, 0.5, 5.0), [0.0, 0.5, 1.0], Tag::Platform));
     };
     for platform in self.platforms.iter_mut() {
       platform.register_collision(collision);
