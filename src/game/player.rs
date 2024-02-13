@@ -4,7 +4,7 @@ use project_shmove::engine::{
     collision::{EventStatus, Tag},
     input::Input,
   },
-  GameObject, GameState,
+  GameObject, GameState, Time,
 };
 use winit::event::VirtualKeyCode;
 
@@ -42,9 +42,9 @@ impl Controller {
     game: &mut GameState,
     input: &Input,
     camera: &CameraController,
-    dt: f32,
+    time: &Time,
   ) {
-    self.update_position(game, dt);
+    self.update_position(game, time.delta_time);
     self.update_input(input, camera);
 
     if self.game_object.transform.position.y < -50.0 {

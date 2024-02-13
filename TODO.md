@@ -14,7 +14,6 @@
 
 ## Backend
 
-- add time struct
 - reafactor to use nalgebra instead of cgmath for alg library #engine
 - add more reexports to #engine
 - add 4d models #render

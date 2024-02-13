@@ -7,15 +7,17 @@ use winit::{
 pub use self::physics::game_object::{GameObject, Transform};
 pub use camera::Camera;
 pub use game_state::GameState;
+pub use time::Time;
 
 pub mod camera;
 mod game_state;
 pub mod physics;
 pub mod render;
+mod time;
 
 pub trait Scene {
   fn start(&mut self, game: &mut GameState);
-  fn update(&mut self, game: &mut GameState, input: &physics::input::Input, dt: f32);
+  fn update(&mut self, game: &mut GameState, input: &physics::input::Input, time: &Time);
   fn get_active_game_objects(&mut self) -> Vec<&mut GameObject>;
 }
 
@@ -28,9 +30,9 @@ pub async fn run(mut game: impl Scene + 'static) {
     .build(&event_loop).unwrap();
 
   let mut physics_state = physics::State::new();
-  let mut last_render_time = instant::Instant::now();
   let mut game_state = GameState::new();
   let mut render_state = render::State::new(window, &game_state.camera).await;
+  let mut time = Time::create();
 
   game.start(&mut game_state);
 
@@ -51,10 +53,12 @@ pub async fn run(mut game: impl Scene + 'static) {
         _ => {}
       },
       Event::RedrawRequested(window_id) if window_id == render_state.window().id() => {
-        let now = instant::Instant::now();
-        let dt = now - last_render_time;
-        last_render_time = now;
-        render_state.update(&game_state.camera, dt, game.get_active_game_objects());
+        time.update();
+        render_state.update(
+          &game_state.camera,
+          time.delta_time,
+          game.get_active_game_objects(),
+        );
 
         match render_state.render() {
           Ok(_) => {}
@@ -64,7 +68,7 @@ pub async fn run(mut game: impl Scene + 'static) {
         }
 
         physics_state.input.update();
-        game.update(&mut game_state, &physics_state.input, dt.as_secs_f32());
+        game.update(&mut game_state, &physics_state.input, &time);
       }
       Event::MainEventsCleared => {
         render_state.window().request_redraw();

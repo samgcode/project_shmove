@@ -2,6 +2,7 @@ use engine::{physics::input::Input, GameObject, GameState, Scene};
 use project_shmove::engine::{
   self,
   physics::collision::{Collision, Tag},
+  Time,
 };
 
 use self::camera::CameraController;
@@ -47,17 +48,17 @@ impl Scene for GameScene {
     self.create_platforms(&mut game.collision);
   }
 
-  fn update(&mut self, game: &mut GameState, input: &Input, dt: f32) {
+  fn update(&mut self, game: &mut GameState, input: &Input, time: &Time) {
     self
       .player_controller
-      .update(game, input, &self.camera_controller, dt);
+      .update(game, input, &self.camera_controller, time);
 
     self
       .camera_controller
       .set_pos(self.player_controller.game_object.transform.position);
     self
       .camera_controller
-      .update(&mut game.camera, input.get_mouse_speed(), dt);
+      .update(&mut game.camera, input.get_mouse_speed(), time);
   }
 
   fn get_active_game_objects(&mut self) -> Vec<&mut GameObject> {

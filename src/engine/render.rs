@@ -305,12 +305,7 @@ impl State {
     }
   }
 
-  pub fn update(
-    &mut self,
-    camera: &camera::Camera,
-    dt: instant::Duration,
-    objects: Vec<&mut GameObject>,
-  ) {
+  pub fn update(&mut self, camera: &camera::Camera, dt: f32, objects: Vec<&mut GameObject>) {
     self
       .camera_uniform
       .update_view_proj(camera, &self.projection);
@@ -334,11 +329,10 @@ impl State {
     self.instance_count = instance_data.len() as u32;
 
     let old_position: cgmath::Vector3<_> = self.light.uniform.position.into();
-    self.light.uniform.position = (cgmath::Quaternion::from_axis_angle(
-      (0.0, 1.0, 0.0).into(),
-      cgmath::Deg(60.0 * dt.as_secs_f32()),
-    ) * old_position)
-      .into();
+    self.light.uniform.position =
+      (cgmath::Quaternion::from_axis_angle((0.0, 1.0, 0.0).into(), cgmath::Deg(60.0 * dt))
+        * old_position)
+        .into();
     self.queue.write_buffer(
       &self.light.buffer,
       0,

@@ -1,7 +1,7 @@
 use cgmath::{InnerSpace, Rad, Vector2, Vector3, Zero};
 use std::f32::consts::FRAC_PI_2;
 
-use project_shmove::engine::Camera;
+use project_shmove::engine::{Camera, Time};
 
 const SAFE_FRAC_PI_2: f32 = FRAC_PI_2 - 0.0001;
 
@@ -22,13 +22,13 @@ impl CameraController {
     }
   }
 
-  pub fn update(&mut self, camera: &mut Camera, mouse_speed: Vector2<f32>, dt: f32) {
+  pub fn update(&mut self, camera: &mut Camera, mouse_speed: Vector2<f32>, time: &Time) {
     camera.position.x = self.position.x;
     camera.position.z = self.position.z;
     camera.position.y = self.position.y;
 
-    camera.yaw += Rad(mouse_speed.x) * self.sensitivity * dt;
-    camera.pitch += Rad(-mouse_speed.y) * self.sensitivity * dt;
+    camera.yaw += Rad(mouse_speed.x) * self.sensitivity * time.delta_time;
+    camera.pitch += Rad(-mouse_speed.y) * self.sensitivity * time.delta_time;
 
     if camera.pitch < -Rad(SAFE_FRAC_PI_2) {
       camera.pitch = -Rad(SAFE_FRAC_PI_2);
