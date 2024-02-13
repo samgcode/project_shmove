@@ -23,10 +23,10 @@ impl Controller {
   pub fn new() -> Self {
     Self {
       gravity: 1.0,
-      speed: 10.0,
+      speed: 15.0,
       jump_height: 25.0,
       game_object: GameObject::new(
-        (0.0, 4.0, 3.5),
+        (0.0, 4.0, 0.0),
         (0.0, 0.0, 0.0),
         (1.0, 2.0, 1.0),
         [1.0, 0.0, 0.0],
@@ -49,7 +49,7 @@ impl Controller {
 
     if self.game_object.transform.position.y < -50.0 {
       self.velocity = Vector3::zero();
-      self.game_object.transform.position = Vector3::new(0.0, 4.0, 3.5);
+      self.game_object.transform.position = Vector3::new(0.0, 4.0, 0.0);
     }
   }
 

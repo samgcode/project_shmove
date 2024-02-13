@@ -3,9 +3,9 @@
 ## Frontend
 
 - make a readme
+- add hazards
+- load level from file
 - add game state machine #game
-- more platforms #game
-  - level data format
 - potential collision idea:
   - move the player on all three axes
   - use toi to move to wall
@@ -14,6 +14,7 @@
 
 ## Backend
 
+- add time struct
 - reafactor to use nalgebra instead of cgmath for alg library #engine
 - add more reexports to #engine
 - add 4d models #render

@@ -1,5 +1,8 @@
 use engine::{physics::input::Input, GameObject, GameState, Scene};
-use project_shmove::engine::{self, physics::collision::Tag};
+use project_shmove::engine::{
+  self,
+  physics::collision::{Collision, Tag},
+};
 
 use self::camera::CameraController;
 
@@ -9,7 +12,7 @@ mod player;
 pub struct GameScene {
   camera_controller: CameraController,
   player_controller: player::Controller,
-  ground: GameObject,
+  platforms: Vec<GameObject>,
 }
 
 impl GameScene {
@@ -17,13 +20,19 @@ impl GameScene {
     Self {
       camera_controller: CameraController::new(1.0),
       player_controller: player::Controller::new(),
-      ground: GameObject::new(
-        (0.0, 0.0, 0.0),
-        (10.0, 0.0, 0.0),
-        (5.0, 2.0, 5.0),
-        [0.0, 1.0, 0.0],
-        Tag::Platform,
-      ),
+      platforms: Vec::<GameObject>::new(),
+    }
+  }
+
+  fn create_platforms(&mut self, collision: &mut Collision) {
+    #[rustfmt::skip] {
+      self.platforms.push(GameObject::new((0.0, 0.0, 0.0),(10.0, 0.0, 0.0),(5.0, 2.0, 5.0), [0.0, 1.0, 0.0], Tag::Platform));
+      self.platforms.push(GameObject::new((0.0, 0.0, 15.0),(0.0, 0.0, 0.0),(5.0, 0.5, 5.0), [0.0, 0.0, 1.0], Tag::Platform));
+      self.platforms.push(GameObject::new((5.0, 0.0, 32.0),(0.0, 0.0, 60.0),(4.0, 0.5, 5.0), [0.0, 1.0, 0.5], Tag::Platform));
+      self.platforms.push(GameObject::new((0.0, 2.0, 60.0),(-20.0, 0.0, 0.0),(5.0, 0.5, 5.0), [0.0, 0.5, 1.0], Tag::Platform));
+    };
+    for platform in self.platforms.iter_mut() {
+      platform.register_collision(collision);
     }
   }
 }
@@ -34,7 +43,8 @@ impl Scene for GameScene {
       .player_controller
       .game_object
       .register_collision(&mut game.collision);
-    self.ground.register_collision(&mut game.collision);
+
+    self.create_platforms(&mut game.collision);
   }
 
   fn update(&mut self, game: &mut GameState, input: &Input, dt: f32) {
@@ -53,7 +63,9 @@ impl Scene for GameScene {
   fn get_active_game_objects(&mut self) -> Vec<&mut GameObject> {
     let mut objects = Vec::<&mut GameObject>::new();
     objects.push(&mut self.player_controller.game_object);
-    objects.push(&mut self.ground);
+    for platform in self.platforms.iter_mut() {
+      objects.push(platform);
+    }
     objects
   }
 }
