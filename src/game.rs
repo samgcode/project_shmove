@@ -105,9 +105,9 @@ impl Scene for GameScene {
     }
     game.collision.update_object(&mut self.player);
 
-    if input.key_pressed(VirtualKeyCode::Up) {
+    if input.key_held(VirtualKeyCode::Up) {
       self.velocity.z = SPEED;
-    } else if input.key_pressed(VirtualKeyCode::Down) {
+    } else if input.key_held(VirtualKeyCode::Down) {
       self.velocity.z = -SPEED;
     } else {
       self.velocity.z = 0.0;
@@ -115,21 +115,21 @@ impl Scene for GameScene {
 
     let mut direction = Vector3::zero();
 
-    if input.key_pressed(VirtualKeyCode::W) {
+    if input.key_held(VirtualKeyCode::W) {
       direction.x = 1.0;
-    } else if input.key_pressed(VirtualKeyCode::S) {
+    } else if input.key_held(VirtualKeyCode::S) {
       direction.x = -1.0;
     }
 
-    if input.key_pressed(VirtualKeyCode::A) {
+    if input.key_held(VirtualKeyCode::A) {
       direction.y = -1.0;
-    } else if input.key_pressed(VirtualKeyCode::D) {
+    } else if input.key_held(VirtualKeyCode::D) {
       direction.y = 1.0;
     }
 
-    if input.key_pressed(VirtualKeyCode::Space) {
+    if input.key_held(VirtualKeyCode::Space) {
       direction.z = 1.0;
-    } else if input.key_pressed(VirtualKeyCode::LShift) {
+    } else if input.key_held(VirtualKeyCode::LShift) {
       direction.z = -1.0;
     }
 
