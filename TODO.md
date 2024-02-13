@@ -3,12 +3,13 @@
 ## Frontend
 
 - make a readme
-- seperate player controller logic from #game.rs
-  - make camera follow player
-  - basic walking and jumping
 - add game state machine #game
 - more platforms #game
   - level data format
+- potential collision idea:
+  - move the player on all three axes
+  - use toi to move to wall
+  - use horizontal velocity to move along the slope
 - [advanced player movement](#movement)
 
 ## Backend
@@ -21,6 +22,7 @@
 - color changeing background
   - expose clear color #render.rs
   - hsv color converter
+- expose lights #render
 - glowing objects #render
 - why does the cursor only lag when hovering over the window like seriously what the hell
 
