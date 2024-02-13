@@ -19,9 +19,7 @@ pub struct GameScene {
   camera_speed: f32,
   player: GameObject,
   ground: GameObject,
-  gravity: f32,
   velocity: Vector3<f32>,
-  y_velocity: f32,
 }
 
 impl GameScene {
@@ -43,9 +41,7 @@ impl GameScene {
         [0.0, 1.0, 0.0],
         Tag::Platform,
       ),
-      gravity: GRAVITY,
       velocity: Vector3::new(0.0, 0.0, 0.0),
-      y_velocity: 0.0,
     }
   }
 }
@@ -57,38 +53,45 @@ impl Scene for GameScene {
   }
 
   fn update(&mut self, game: &mut GameState, input: &Input, dt: f32) {
+    let horizontal_vel = Vector3::new(self.velocity.x, 0.0, self.velocity.z);
+
     if let EventStatus::Enter | EventStatus::Stay = self.player.collision.status {
-      if !self.velocity.is_zero() {
-        self.player.transform.position -= self.velocity;
+      if !horizontal_vel.is_zero() {
+        self.player.transform.position -= horizontal_vel;
+
         let toi = game.collision.get_toi(
           &mut self.player.transform,
-          self.velocity,
+          horizontal_vel,
           self.player.collision.other_handle,
         );
-        self.player.transform.position += self.velocity * toi;
+        self.player.transform.position += horizontal_vel * toi;
 
-        let normal_vel = cgmath::InnerSpace::normalize(self.velocity);
-        let parallel_direction = cgmath::InnerSpace::normalize(
-          normal_vel
-            - self.player.collision.normal * cgmath::dot(self.player.collision.normal, normal_vel),
-        );
+        let normal_vel = cgmath::InnerSpace::normalize(horizontal_vel);
+        let mut parallel_direction = normal_vel
+          - self.player.collision.normal * cgmath::dot(self.player.collision.normal, normal_vel);
 
-        self.player.transform.position +=
-          parallel_direction * (cgmath::InnerSpace::magnitude(self.velocity) * (1.0 - toi));
+        if !parallel_direction.is_zero() {
+          parallel_direction = cgmath::InnerSpace::normalize(parallel_direction);
+
+          self.player.transform.position +=
+            parallel_direction * (cgmath::InnerSpace::magnitude(horizontal_vel) * (1.0 - toi));
+        }
       }
     } else {
-      self.y_velocity -= self.gravity;
-      self.player.transform.position.y += self.y_velocity;
+      let vertical_vel = Vector3::new(0.0, self.velocity.y, 0.0);
+      self.player.transform.position += vertical_vel;
       game.collision.update_object(&mut self.player);
       if let EventStatus::Enter | EventStatus::Stay = self.player.collision.status {
-        self.player.transform.position.y -= self.y_velocity;
+        self.player.transform.position -= vertical_vel;
         let toi = game.collision.get_toi(
           &mut self.player.transform,
-          Vector3::new(0.0, self.y_velocity, 0.0),
+          vertical_vel,
           self.player.collision.other_handle,
         );
-        self.player.transform.position.y += self.y_velocity * toi;
-        self.y_velocity = 0.0;
+        self.player.transform.position += vertical_vel * toi;
+        self.velocity.y = 0.0;
+      } else {
+        self.velocity.y -= GRAVITY;
       }
     }
 
@@ -99,7 +102,7 @@ impl Scene for GameScene {
     } else {
       self.velocity.z = 0.0;
     }
-    self.player.transform.position += self.velocity;
+    self.player.transform.position += horizontal_vel;
 
     let mut direction = Vector3::zero();
 
