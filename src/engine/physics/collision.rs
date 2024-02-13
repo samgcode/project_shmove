@@ -61,14 +61,12 @@ impl Collision {
     }
   }
 
-  pub fn update(&mut self, objects: Vec<&mut GameObject>) {
+  pub fn update_object(&mut self, object: &mut GameObject) {
     let mut events =
       HashMap::<CollisionObjectSlabHandle, (CollisionObjectSlabHandle, Contact<f32>)>::new();
 
-    for object in &objects {
-      let collision_object = self.world.get_mut(object.collision_handle).unwrap();
-      collision_object.set_position(get_isometry(&object.transform));
-    }
+    let collision_object = self.world.get_mut(object.collision_handle).unwrap();
+    collision_object.set_position(get_isometry(&object.transform));
 
     self.world.update();
 
@@ -77,48 +75,40 @@ impl Collision {
       events.insert(pair.1, (pair.0, pair.3.deepest_contact().unwrap().contact));
     }
 
-    for object in objects {
-      if let Some((other_handle, contact)) = events.get(&object.collision_handle) {
-        let status = match object.collision.status {
-          EventStatus::None => EventStatus::Enter,
-          EventStatus::Enter => EventStatus::Stay,
-          EventStatus::Stay => EventStatus::Stay,
-          EventStatus::Leave => EventStatus::None,
-        };
+    if let Some((other_handle, contact)) = events.get(&object.collision_handle) {
+      let status = match object.collision.status {
+        EventStatus::None => EventStatus::Enter,
+        EventStatus::Enter => EventStatus::Stay,
+        EventStatus::Stay => EventStatus::Stay,
+        EventStatus::Leave => EventStatus::Enter,
+      };
+      object.collision = CollisionEvent {
+        status,
+        depth: contact.depth,
+        normal: cgmath::Vector3 {
+          x: contact.normal.x,
+          y: contact.normal.y,
+          z: contact.normal.z,
+        },
+        other_handle: *other_handle,
+        other_tag: Tag::Platform,
+      };
+    } else {
+      if let EventStatus::Enter | EventStatus::Stay = object.collision.status {
         object.collision = CollisionEvent {
-          status,
-          depth: contact.depth,
-          normal: cgmath::Vector3 {
-            x: contact.normal.x,
-            y: contact.normal.y,
-            z: contact.normal.z,
-          },
-          other_handle: *other_handle,
-          other_tag: Tag::Platform,
+          status: EventStatus::Leave,
+          ..object.collision
         };
       } else {
-        if let EventStatus::Enter | EventStatus::Stay = object.collision.status {
-          object.collision = CollisionEvent {
-            status: EventStatus::Leave,
-            ..object.collision
-          };
-        } else {
-          object.collision = CollisionEvent {
-            status: EventStatus::None,
-            depth: 0.0,
-            normal: cgmath::Vector3::zero(),
-            other_handle: CollisionObjectSlabHandle(0),
-            other_tag: Tag::None,
-          };
-        }
+        object.collision = CollisionEvent {
+          status: EventStatus::None,
+          depth: 0.0,
+          normal: cgmath::Vector3::zero(),
+          other_handle: CollisionObjectSlabHandle(0),
+          other_tag: Tag::None,
+        };
       }
     }
-  }
-
-  pub fn update_object(&mut self, object: &mut GameObject) {
-    let mut objects = Vec::<&mut GameObject>::new();
-    objects.push(object);
-    self.update(objects);
   }
 
   pub fn get_toi(
@@ -126,6 +116,7 @@ impl Collision {
     object: &mut Transform,
     vel: cgmath::Vector3<f32>,
     other_handle: CollisionObjectSlabHandle,
+    dist: f32,
   ) -> f32 {
     let cgmath::Vector3 { x, y, z } = object.scale;
     let collider = Cuboid::new(na::Vector3::<f32>::new(x, y, z));
@@ -143,7 +134,7 @@ impl Collision {
       &na::Vector3::<f32>::new(0.0, 0.0, 0.0),
       shape,
       1.0,
-      0.0,
+      dist,
     ) {
       return toi.toi;
     }

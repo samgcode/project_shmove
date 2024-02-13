@@ -4,9 +4,9 @@ use winit::{
   window::WindowBuilder,
 };
 
+pub use self::physics::game_object::{GameObject, Transform};
 pub use camera::Camera;
 pub use game_state::GameState;
-pub use self::physics::game_object::{GameObject, Transform};
 
 pub mod camera;
 mod game_state;
@@ -64,7 +64,6 @@ pub async fn run(mut game: impl Scene + 'static) {
         }
 
         physics_state.input.update();
-        game_state.collision.update(game.get_active_game_objects());
         game.update(&mut game_state, &physics_state.input, dt.as_secs_f32());
       }
       Event::MainEventsCleared => {

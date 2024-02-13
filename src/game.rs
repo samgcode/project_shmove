@@ -28,7 +28,7 @@ impl GameScene {
       camera_controller: CameraController { sensitivity: 1.0 },
       camera_speed: 5.0,
       player: GameObject::new(
-        (0.0, 2.0, 10.0),
+        (0.0, 4.0, 3.5),
         (0.0, 0.0, 0.0),
         (1.0, 2.0, 1.0),
         [1.0, 0.0, 0.0],
@@ -37,7 +37,7 @@ impl GameScene {
       ground: GameObject::new(
         (0.0, 0.0, 0.0),
         (10.0, 0.0, 0.0),
-        (5.0, 0.5, 15.0),
+        (5.0, 2.0, 5.0),
         [0.0, 1.0, 0.0],
         Tag::Platform,
       ),
@@ -55,7 +55,9 @@ impl Scene for GameScene {
   fn update(&mut self, game: &mut GameState, input: &Input, dt: f32) {
     let horizontal_vel = Vector3::new(self.velocity.x, 0.0, self.velocity.z);
 
-    if let EventStatus::Enter | EventStatus::Stay = self.player.collision.status {
+    self.player.transform.position += horizontal_vel;
+    game.collision.update_object(&mut self.player);
+    if let EventStatus::Enter = self.player.collision.status {
       if !horizontal_vel.is_zero() {
         self.player.transform.position -= horizontal_vel;
 
@@ -63,6 +65,7 @@ impl Scene for GameScene {
           &mut self.player.transform,
           horizontal_vel,
           self.player.collision.other_handle,
+          0.02,
         );
         self.player.transform.position += horizontal_vel * toi;
 
@@ -77,23 +80,30 @@ impl Scene for GameScene {
             parallel_direction * (cgmath::InnerSpace::magnitude(horizontal_vel) * (1.0 - toi));
         }
       }
-    } else {
-      let vertical_vel = Vector3::new(0.0, self.velocity.y, 0.0);
-      self.player.transform.position += vertical_vel;
-      game.collision.update_object(&mut self.player);
-      if let EventStatus::Enter | EventStatus::Stay = self.player.collision.status {
-        self.player.transform.position -= vertical_vel;
-        let toi = game.collision.get_toi(
-          &mut self.player.transform,
-          vertical_vel,
-          self.player.collision.other_handle,
-        );
-        self.player.transform.position += vertical_vel * toi;
-        self.velocity.y = 0.0;
-      } else {
-        self.velocity.y -= GRAVITY;
-      }
     }
+    game.collision.update_object(&mut self.player);
+    while let EventStatus::Stay = self.player.collision.status {
+      self.player.transform.position.y += 0.02;
+      game.collision.update_object(&mut self.player);
+    }
+
+    let vertical_vel = Vector3::new(0.0, self.velocity.y, 0.0);
+    self.player.transform.position += vertical_vel;
+    game.collision.update_object(&mut self.player);
+    if let EventStatus::Enter = self.player.collision.status {
+      self.player.transform.position -= vertical_vel;
+      let toi = game.collision.get_toi(
+        &mut self.player.transform,
+        vertical_vel,
+        self.player.collision.other_handle,
+        0.02,
+      );
+      self.player.transform.position += vertical_vel * toi;
+      self.velocity.y = 0.0;
+    } else {
+      self.velocity.y -= GRAVITY;
+    }
+    game.collision.update_object(&mut self.player);
 
     if input.key_pressed(VirtualKeyCode::Up) {
       self.velocity.z = SPEED;
@@ -102,7 +112,6 @@ impl Scene for GameScene {
     } else {
       self.velocity.z = 0.0;
     }
-    self.player.transform.position += horizontal_vel;
 
     let mut direction = Vector3::zero();
 
