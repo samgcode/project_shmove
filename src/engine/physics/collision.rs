@@ -67,6 +67,10 @@ impl Collision {
 
     let collision_object = self.world.get_mut(object.collision_handle).unwrap();
     collision_object.set_position(get_isometry(&object.transform));
+    let cgmath::Vector3 { x, y, z } = object.transform.scale;
+    collision_object.set_shape(ShapeHandle::new(Cuboid::new(na::Vector3::<f32>::new(
+      x, y, z,
+    ))));
 
     self.world.update();
 

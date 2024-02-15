@@ -13,7 +13,7 @@ use super::camera::CameraController;
 
 const GRAVITY: f32 = 1.0;
 const FRICTION: f32 = 0.1;
-const FAST_FRICTION: f32 = 0.015;
+const FAST_FRICTION: f32 = 0.02;
 const MIN_OPPOSING_MULTIPLIER: f32 = 0.95;
 
 const CROUCH_WALK_SPEED: f32 = 4.0;
@@ -21,7 +21,7 @@ const WALK_SPEED: f32 = 8.0;
 const SPRINT_SPEED: f32 = 15.0;
 
 const SPRINT_JUMP_BOOST: f32 = 2.0;
-const SLIDE_BOOST: f32 = 1.2;
+const SLIDE_BOOST: f32 = 1.3;
 
 const CROUCH_JUMP: f32 = 20.0;
 const NORMAL_JUMP: f32 = 30.0;
@@ -33,6 +33,9 @@ const SPRINT_JUMP_HEIGHT: f32 = (-SPRINT_JUMP * SPRINT_JUMP) / (2.0 * GRAVITY);
 
 const REQUIRED_WALK_TIME: f32 = 0.5;
 const SLIDE_TIME: f32 = 1.0;
+
+const NORMAL_HEIGHT: f32 = 2.0;
+const CROUCHED_HEIGHT: f32 = 0.5;
 
 #[derive(Debug, Clone, Copy)]
 enum MovementState {
@@ -49,6 +52,7 @@ use MovementState::*;
 
 pub struct Controller {
   pub game_object: GameObject,
+  pub camera_position: Vector3<f32>,
   grounded: bool,
   movement_state: MovementState,
   velocity: Vector3<f32>,
@@ -57,6 +61,7 @@ pub struct Controller {
   input_direction: Vector2<f32>,
   jump_pressed: bool,
   crouch_pressed: bool,
+  crouch_held: bool,
 }
 
 impl Controller {
@@ -69,6 +74,7 @@ impl Controller {
         [1.0, 0.0, 0.0],
         Tag::Player,
       ),
+      camera_position: Vector3::new(0.0, 5.0, 0.0),
       grounded: false,
       movement_state: Static,
       velocity: Vector3::zero(),
@@ -77,6 +83,7 @@ impl Controller {
       input_direction: Vector2::zero(),
       jump_pressed: false,
       crouch_pressed: false,
+      crouch_held: false,
     }
   }
 
@@ -90,6 +97,13 @@ impl Controller {
     self.update_position(game, time.delta_time);
     self.update_input(input, camera);
     self.update_velocity(time);
+
+    if let Crouching | CrouchWalking | Sliding(_) | SpeedSliding(_) = self.movement_state {
+      self.game_object.transform.scale.y = CROUCHED_HEIGHT;
+    } else {
+      self.game_object.transform.scale.y = NORMAL_HEIGHT;
+    }
+    self.camera_position = self.game_object.transform.position;
 
     if self.game_object.transform.position.y < -50.0 {
       self.velocity = Vector3::zero();
@@ -163,6 +177,7 @@ impl Controller {
 
     self.jump_pressed = input.key_pressed(VirtualKeyCode::Space);
     self.crouch_pressed = input.key_pressed(VirtualKeyCode::LShift);
+    self.crouch_held = input.key_held(VirtualKeyCode::LShift);
 
     if input.key_held(VirtualKeyCode::W) {
       direction.x = 1.0;
@@ -204,7 +219,10 @@ impl Controller {
 
     if self.speed <= SPRINT_SPEED {
       if !self.input_direction.is_zero() {
-        self.direction = self.input_direction;
+        if let Sliding(_) = self.movement_state {
+        } else {
+          self.direction = self.input_direction;
+        }
         self.update_capped_movement(time);
       }
     }
@@ -310,6 +328,7 @@ impl Controller {
 
   fn update_crouch(&mut self, time: &Time) {
     if self.crouch_pressed {
+      self.game_object.transform.position.y -= NORMAL_HEIGHT - CROUCHED_HEIGHT;
       self.movement_state = match self.movement_state {
         Static => Crouching,
         Walking(_) => Sliding(time.elapsed_time),
@@ -323,6 +342,21 @@ impl Controller {
       }
     } else {
       match self.movement_state {
+        Static => {
+          if self.crouch_held {
+            self.movement_state = Crouching;
+          }
+        }
+        Crouching => {
+          if !self.crouch_held {
+            self.movement_state = Static;
+          }
+        }
+        CrouchWalking => {
+          if !self.crouch_held {
+            self.movement_state = Walking(time.elapsed_time);
+          }
+        }
         Sliding(start_time) => {
           self.speed = SPRINT_SPEED;
           if time.elapsed_time - start_time > SLIDE_TIME {

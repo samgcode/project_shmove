@@ -27,7 +27,7 @@ impl GameScene {
 
   fn create_platforms(&mut self, collision: &mut Collision) {
     #[rustfmt::skip] {
-      self.platforms.push(GameObject::new((0.0, 0.0, 0.0),(0.0, 0.0, 0.0),(10.0, 1.0, 50.0), [1.0, 0.0, 0.0], Tag::Platform));
+      self.platforms.push(GameObject::new((0.0, 0.0, 0.0),(0.0, 0.0, 0.0),(10.0, 1.0, 500.0), [1.0, 0.0, 0.0], Tag::Platform));
       self.platforms.push(GameObject::new((30.0, 0.0, 0.0),(10.0, 0.0, 0.0),(5.0, 2.0, 5.0), [0.0, 1.0, 0.0], Tag::Platform));
       self.platforms.push(GameObject::new((30.0, 0.0, 15.0),(0.0, 0.0, 0.0),(5.0, 0.5, 5.0), [0.0, 0.0, 1.0], Tag::Platform));
       self.platforms.push(GameObject::new((35.0, 0.0, 32.0),(0.0, 0.0, 60.0),(4.0, 0.5, 5.0), [0.0, 1.0, 0.5], Tag::Platform));
@@ -56,7 +56,7 @@ impl Scene for GameScene {
 
     self
       .camera_controller
-      .set_pos(self.player_controller.game_object.transform.position);
+      .set_pos(self.player_controller.camera_position);
     self
       .camera_controller
       .update(&mut game.camera, input.get_mouse_speed(), time);
