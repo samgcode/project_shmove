@@ -31,36 +31,36 @@
 
 - basic mechanics
   - X walking
-  - jumping
-    - variable height (min, max)
+  - X jumping
+    - ~~variable height (min, max)~~ (not really useful)
     - X moving in mid air is the same as horizontal
   - crouching while not moving: enter crouched state
     - walk slower, doesn't automatically end
 - intermediate movement
-  - crouching while moving: short slide
-    - gives running speed
-    - automatically ends
+  - X crouching while moving: short slide
+    - X gives running speed
+    - X automatically ends
   - X walking for a short time -> running
   - running
     - changing input direction significantly -> walking
-    - jump -> sprint jump
+    - X jump -> sprint jump
       - X slightly higher fixed height jump
       - X small boost of speed initially
       - X higher speed is maintained until you land
-    - crouching while sprinting -> speed slide
-      - gives an extra boost of speed until the slide ends
+    - X crouching while sprinting -> speed slide
+      - X gives an extra boost of speed until the slide ends
 - advanced movement
   - sprint jump
     - moving in a direction that is relatively alligned with the motion
       - speed is held constant
-      - direction changes by a smaller amount, greater if more misaligned
+      - X direction changes by a smaller amount, greater if more misaligned
     - moving in a direction that oposes the motion
-      - speed is decreased by an amount proportional to how oposed
+      - X speed is decreased by an amount proportional to how oposed
       - if jump height is less than max, max is increased
-  - speed slide, jump -> slide boost
-    - more speed than regular sprint jump but less height
+  - X speed slide, jump -> slide boost
+    - X more speed than regular sprint jump but less height
   - X jumping within a short period after landing -> bunny hop
     - X essentially a sprint jump
     - X since speed hasnt fully decreased to sprint speed, the new jump is faster
-  - sliding within a short period of landing -> speed slide
-    - gives more speed since speed compounds
+  - X sliding within a short period of landing -> speed slide
+    - X gives more speed since speed compounds
