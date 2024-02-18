@@ -1,4 +1,7 @@
-use std::ops::Range;
+use std::ops::{Mul, Range};
+
+use cgmath::Vector4;
+use wgpu::{util::DeviceExt, Device};
 
 pub trait Vertex {
   fn desc() -> wgpu::VertexBufferLayout<'static>;
@@ -29,6 +32,78 @@ impl Vertex for MeshVertex {
           format: wgpu::VertexFormat::Float32x3,
         },
       ],
+    }
+  }
+}
+
+pub struct Mesh4d {
+  pub name: String,
+  pub vertices: Vec<Vector4<f32>>,
+  pub normals: Vec<[f32; 3]>,
+  pub indices: Vec<u32>,
+  pub angle: f32,
+}
+
+impl Mesh4d {
+  pub fn project(&self, device: &Device) -> Mesh {
+    let focal_length = 100.0;
+
+    let angle = self.angle * 3.1415/180.0;
+    #[rustfmt::skip]
+    let rotation1 = cgmath::Matrix4::new(
+      1.0, 0.0, 0.0, 0.0, 
+      0.0, f32::cos(angle*0.5), 0.0, f32::sin(angle*0.5), 
+      0.0, 0.0, 1.0, 0.0, 
+      0.0, -f32::sin(angle*0.5), 0.0, f32::cos(angle*0.5)
+    );
+    #[rustfmt::skip]
+    let rotation2 = cgmath::Matrix4::new(
+      f32::cos(angle), 0.0, 0.0, f32::sin(angle), 
+      0.0, 1.0, 0.0, 0.0, 
+      0.0, 0.0, 1.0, 0.0, 
+      -f32::sin(angle), 0.0, 0.0, f32::cos(angle)
+    );
+    #[rustfmt::skip]
+    let rotation3 = cgmath::Matrix4::new(
+      1.0, 0.0, 0.0, 0.0, 
+      0.0, 1.0, 0.0, 0.0,
+      0.0, 0.0, f32::cos(angle * 0.75), f32::sin(angle * 0.75), 
+      0.0, 0.0, -f32::sin(angle * 0.75), f32::cos(angle * 0.75), 
+    );
+
+    let vertices = self
+      .vertices
+      .iter()
+      .enumerate()
+      .map(|(i, v)| {
+        // let vertex = v;
+        let vertex = rotation1.mul(rotation2).mul(rotation3).mul(v);
+        MeshVertex {
+          position: [
+            (focal_length * vertex.x) / (focal_length + vertex.w),
+            (focal_length * vertex.y) / (focal_length + vertex.w),
+            (focal_length * vertex.z) / (focal_length + vertex.w),
+          ],
+          normal: self.normals[i],
+        }
+      })
+      .collect::<Vec<_>>();
+
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+      label: Some(&format!("{:?} Vertex Buffer", self.name)),
+      contents: bytemuck::cast_slice(&vertices),
+      usage: wgpu::BufferUsages::VERTEX,
+    });
+    let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+      label: Some(&format!("{:?} Index Buffer", self.name)),
+      contents: bytemuck::cast_slice(&self.indices),
+      usage: wgpu::BufferUsages::INDEX,
+    });
+    Mesh {
+      name: self.name.to_string(),
+      vertex_buffer,
+      index_buffer,
+      num_elements: self.indices.clone().len() as u32,
     }
   }
 }

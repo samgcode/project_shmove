@@ -293,7 +293,7 @@ impl Controller {
         self.speed = SPRINT_SPEED;
       }
       Uncapped | SpeedSliding(_) => {
-        panic!("Invalid movment state: expected capped, is uncapped")
+        // panic!("Invalid movment state: expected capped, is uncapped")
       }
     }
   }

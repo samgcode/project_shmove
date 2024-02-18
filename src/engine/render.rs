@@ -1,4 +1,4 @@
-use cgmath::prelude::*;
+use cgmath::{prelude::*, Vector3};
 use wgpu::util::DeviceExt;
 use winit::window::Window;
 
@@ -132,7 +132,10 @@ pub struct State {
   camera_buffer: wgpu::Buffer,
   camera_bind_group: wgpu::BindGroup,
   obj: mesh::Mesh,
+  obj_4: mesh::Mesh4d,
+  projected_4d: mesh::Mesh,
   instance_buffer: wgpu::Buffer,
+  instance_buffer_4: wgpu::Buffer,
   instance_count: u32,
   clear_color: wgpu::Color,
   depth_texture: texture::Texture,
@@ -237,12 +240,27 @@ impl State {
     );
 
     let obj = resources::load_mesh("cube.obj", &device).await.unwrap();
+    let obj_4 = resources::load_mesh_4d("skrungle.obj").await.unwrap();
+
+    let projected_4d = obj_4.project(&device);
 
     let instance_buffer = device.create_buffer(&wgpu::BufferDescriptor {
       label: Some("Instance Buffer"),
       size: (std::mem::size_of::<InstanceRaw>() as u64) * MAX_INSTANCES,
       usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
       mapped_at_creation: false,
+    });
+
+    let instances = vec![InstanceRaw {
+      model: cgmath::Matrix4::from_translation(Vector3::new(0.0, 4.0, 4.0)).into(),
+      normal: cgmath::Matrix3::from(cgmath::Quaternion::from_angle_x(cgmath::Deg(0.0))).into(),
+      color: [1.0, 0.0, 0.5],
+    }];
+
+    let instance_buffer_4 = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+      label: Some("4D Instance Buffer"),
+      contents: bytemuck::cast_slice(&instances),
+      usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
     });
 
     let clear_color = wgpu::Color::BLACK;
@@ -283,8 +301,11 @@ impl State {
       camera_buffer,
       camera_bind_group,
       obj,
+      obj_4,
+      projected_4d,
       instance_count: 0,
       instance_buffer,
+      instance_buffer_4,
       clear_color,
       depth_texture,
       light,
@@ -338,6 +359,8 @@ impl State {
       0,
       bytemuck::cast_slice(&[self.light.uniform]),
     );
+
+    self.obj_4.angle += 2.0;
   }
 
   pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -378,14 +401,24 @@ impl State {
 
       render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
 
+      self.projected_4d = self.obj_4.project(&self.device);
+
       use mesh::DrawLight;
       render_pass.set_pipeline(&self.light.render_pipeline);
+      render_pass.draw_light_mesh(&self.obj, &self.camera_bind_group, &self.light.bind_group);
       render_pass.draw_light_mesh(&self.obj, &self.camera_bind_group, &self.light.bind_group);
 
       render_pass.set_pipeline(&self.render_pipeline);
       render_pass.draw_mesh_instanced(
         &self.obj,
         0..self.instance_count,
+        &self.camera_bind_group,
+        &self.light.bind_group,
+      );
+      render_pass.set_vertex_buffer(1, self.instance_buffer_4.slice(..));
+      render_pass.draw_mesh_instanced(
+        &self.projected_4d,
+        0..1,
         &self.camera_bind_group,
         &self.light.bind_group,
       );

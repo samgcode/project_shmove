@@ -17,9 +17,8 @@
 - add text and UI
 - reafactor to use nalgebra instead of cgmath for alg library #engine
 - add more reexports to #engine
-- add 4d models #render
-  - model loading, adding the extra triangles
-  - add 4d projection to render pipeline
+- 4d model
+  - calculate normals
 - color changeing background
   - expose clear color #render.rs
   - hsv color converter
