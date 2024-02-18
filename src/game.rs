@@ -50,6 +50,10 @@ impl Scene for GameScene {
   }
 
   fn update(&mut self, game: &mut GameState, input: &Input, time: &Time) {
+    game
+      .background_color
+      .set_hue(time.elapsed_time as f64 * 25.0);
+
     self
       .player_controller
       .update(game, input, &self.camera_controller, time);

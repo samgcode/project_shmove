@@ -5,6 +5,7 @@
 - make a readme
 - add hazards
 - load level from file
+- level editor
 - add game state machine #game
 - potential collision idea:
   - move the player on all three axes

@@ -54,6 +54,7 @@ pub async fn run(mut game: impl Scene + 'static) {
       },
       Event::RedrawRequested(window_id) if window_id == render_state.window().id() => {
         time.update();
+        render_state.update_clear_color(&game_state.background_color);
         render_state.update(
           &game_state.camera,
           time.delta_time,

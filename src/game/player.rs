@@ -1,6 +1,5 @@
 use cgmath::{Vector2, Vector3, Zero};
 use project_shmove::engine::{
-  camera,
   physics::{
     collision::{EventStatus, Tag},
     input::Input,
@@ -27,9 +26,9 @@ const CROUCH_JUMP: f32 = 20.0;
 const NORMAL_JUMP: f32 = 30.0;
 const SPRINT_JUMP: f32 = 25.0;
 
-const CROUCH_JUMP_HEIGHT: f32 = (-CROUCH_JUMP * CROUCH_JUMP) / (2.0 * GRAVITY);
-const NORMAL_JUMP_HEIGHT: f32 = (-NORMAL_JUMP * NORMAL_JUMP) / (2.0 * GRAVITY);
-const SPRINT_JUMP_HEIGHT: f32 = (-SPRINT_JUMP * SPRINT_JUMP) / (2.0 * GRAVITY);
+// const CROUCH_JUMP_HEIGHT: f32 = (-CROUCH_JUMP * CROUCH_JUMP) / (2.0 * GRAVITY);
+// const NORMAL_JUMP_HEIGHT: f32 = (-NORMAL_JUMP * NORMAL_JUMP) / (2.0 * GRAVITY);
+// const SPRINT_JUMP_HEIGHT: f32 = (-SPRINT_JUMP * SPRINT_JUMP) / (2.0 * GRAVITY);
 
 const REQUIRED_WALK_TIME: f32 = 0.5;
 const SLIDE_TIME: f32 = 1.0;
@@ -351,6 +350,8 @@ impl Controller {
           if !self.crouch_held {
             self.movement_state = Static;
           }
+          self.speed = CROUCH_WALK_SPEED;
+          self.movement_state = CrouchWalking;
         }
         CrouchWalking => {
           if !self.crouch_held {
@@ -367,10 +368,6 @@ impl Controller {
           if time.elapsed_time - start_time > SLIDE_TIME {
             self.movement_state = Uncapped;
           }
-        }
-        Crouching => {
-          self.speed = CROUCH_WALK_SPEED;
-          self.movement_state = CrouchWalking;
         }
         _ => {}
       }

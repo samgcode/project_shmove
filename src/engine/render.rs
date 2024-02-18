@@ -7,8 +7,11 @@ use mesh::{DrawModel, Vertex};
 use crate::engine::camera;
 use light::Light;
 
+use self::color::Color;
+
 use super::physics::game_object::GameObject;
 
+pub mod color;
 mod light;
 mod mesh;
 mod resources;
@@ -324,6 +327,10 @@ impl State {
       self.depth_texture =
         texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
     }
+  }
+
+  pub fn update_clear_color(&mut self, color: &Color) {
+    self.clear_color = color.to_wgpu();
   }
 
   pub fn update(&mut self, camera: &camera::Camera, dt: f32, objects: Vec<&mut GameObject>) {
