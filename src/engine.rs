@@ -4,9 +4,12 @@ use winit::{
   window::WindowBuilder,
 };
 
+use self::physics::game_object;
 pub use self::physics::game_object::{GameObject, Transform};
 pub use camera::Camera;
 pub use game_state::GameState;
+pub use render::color::Color;
+pub use render::ui::TextObject;
 pub use time::Time;
 
 pub mod camera;
@@ -18,7 +21,7 @@ mod time;
 pub trait Scene {
   fn start(&mut self, game: &mut GameState);
   fn update(&mut self, game: &mut GameState, input: &physics::input::Input, time: &Time);
-  fn get_active_game_objects(&mut self) -> Vec<&mut GameObject>;
+  fn get_objects(&mut self) -> (Vec<&mut GameObject>, Vec<&TextObject>);
 }
 
 pub async fn run(mut game: impl Scene + 'static) {
@@ -54,11 +57,14 @@ pub async fn run(mut game: impl Scene + 'static) {
       },
       Event::RedrawRequested(window_id) if window_id == render_state.window().id() => {
         time.update();
+
+        let (game_objects, text_objects) = game.get_objects();
         render_state.update_clear_color(&game_state.background_color);
         render_state.update(
           &game_state.camera,
           time.delta_time,
-          game.get_active_game_objects(),
+          game_objects,
+          text_objects,
         );
 
         match render_state.render() {

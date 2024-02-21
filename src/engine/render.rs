@@ -2,12 +2,14 @@ use cgmath::{prelude::*, Vector3};
 use wgpu::util::DeviceExt;
 use winit::window::Window;
 
-use mesh::{DrawModel, Vertex};
-
 use crate::engine::camera;
 use light::Light;
+use mesh::{DrawModel, Vertex};
 
-use self::color::Color;
+use self::{
+  color::Color,
+  ui::{TextObject, UIState},
+};
 
 use super::physics::game_object::GameObject;
 
@@ -16,6 +18,7 @@ mod light;
 mod mesh;
 mod resources;
 mod texture;
+pub mod ui;
 
 const MAX_INSTANCES: u64 = 100;
 
@@ -143,6 +146,7 @@ pub struct State {
   clear_color: wgpu::Color,
   depth_texture: texture::Texture,
   light: Light,
+  ui: UIState,
   window: Window,
 }
 
@@ -292,6 +296,8 @@ impl State {
       )
     };
 
+    let ui = UIState::new(&device, &config);
+
     Self {
       surface,
       device,
@@ -312,6 +318,7 @@ impl State {
       clear_color,
       depth_texture,
       light,
+      ui,
       window,
     }
   }
@@ -333,7 +340,13 @@ impl State {
     self.clear_color = color.to_wgpu();
   }
 
-  pub fn update(&mut self, camera: &camera::Camera, dt: f32, objects: Vec<&mut GameObject>) {
+  pub fn update(
+    &mut self,
+    camera: &camera::Camera,
+    dt: f32,
+    objects: Vec<&mut GameObject>,
+    text_objects: Vec<&TextObject>,
+  ) {
     self
       .camera_uniform
       .update_view_proj(camera, &self.projection);
@@ -368,6 +381,8 @@ impl State {
     );
 
     self.obj_4.angle += 2.0;
+
+    self.ui.draw_text(text_objects);
   }
 
   pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -405,7 +420,6 @@ impl State {
         occlusion_query_set: None,
         timestamp_writes: None,
       });
-
       render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
 
       self.projected_4d = self.obj_4.project(&self.device);
@@ -430,6 +444,11 @@ impl State {
         &self.light.bind_group,
       );
     }
+
+    self
+      .ui
+      .render(&self.device, &mut encoder, &view, &self.config);
+
     self.queue.submit(std::iter::once(encoder.finish()));
     output.present();
 

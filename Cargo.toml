@@ -12,6 +12,7 @@ fs_extra = "1.2"
 [dependencies]
 winit = "0.28"
 wgpu = "0.18"
+wgpu_glyph = "0.22.0"
 cgmath = "0.18"
 bytemuck = { version = "1.12", features = ["derive"] }
 tobj = { version = "4.0.1", features = ["async"] }

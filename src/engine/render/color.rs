@@ -53,6 +53,10 @@ impl Color {
       a: 1.0,
     }
   }
+
+  pub fn to_vec4(&self) -> cgmath::Vector4<f32> {
+    cgmath::Vector4::<f32>::new(self.red as f32, self.green as f32, self.blue as f32, 1.0)
+  }
 }
 
 fn hsv_to_rbg(h: f64, s: f64, v: f64) -> (f64, f64, f64) {

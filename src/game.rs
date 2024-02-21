@@ -2,7 +2,8 @@ use engine::{physics::input::Input, GameObject, GameState, Scene};
 use project_shmove::engine::{
   self,
   physics::collision::{Collision, Tag},
-  Time,
+  render::color::Color,
+  TextObject, Time,
 };
 
 use self::camera::CameraController;
@@ -14,6 +15,7 @@ pub struct GameScene {
   camera_controller: CameraController,
   player_controller: player::Controller,
   platforms: Vec<GameObject>,
+  text: TextObject,
 }
 
 impl GameScene {
@@ -22,6 +24,7 @@ impl GameScene {
       camera_controller: CameraController::new(1.0),
       player_controller: player::Controller::new(),
       platforms: Vec::<GameObject>::new(),
+      text: TextObject::default(),
     }
   }
 
@@ -64,14 +67,16 @@ impl Scene for GameScene {
     self
       .camera_controller
       .update(&mut game.camera, input.get_mouse_speed(), time);
+
+    self.text.color = Color::from_hsv(time.elapsed_time as f64 * 50.0, 1.0, 1.0);
   }
 
-  fn get_active_game_objects(&mut self) -> Vec<&mut GameObject> {
+  fn get_objects(&mut self) -> (Vec<&mut GameObject>, Vec<&engine::TextObject>) {
     let mut objects = Vec::<&mut GameObject>::new();
     objects.push(&mut self.player_controller.game_object);
     for platform in self.platforms.iter_mut() {
       objects.push(platform);
     }
-    objects
+    (objects, vec![&self.text])
   }
 }
