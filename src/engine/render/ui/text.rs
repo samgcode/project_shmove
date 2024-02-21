@@ -1,4 +1,4 @@
-use cgmath::{Vector2, Vector4};
+use cgmath::Vector2;
 
 use crate::engine::render::color::Color;
 

@@ -22,13 +22,18 @@ impl Color {
   }
 
   pub fn from_hsv(h: f64, s: f64, v: f64) -> Self {
-    let (r, g, b) = hsv_to_rbg(h, s, v);
+    let mut hue = h;
+    while hue > 360.0 {
+      hue -= 360.0;
+    }
+
+    let (r, g, b) = hsv_to_rbg(hue, s, v);
 
     Self {
       red: r,
       green: g,
       blue: b,
-      hue: h,
+      hue,
       saturation: s,
       value: v,
     }

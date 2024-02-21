@@ -4,7 +4,6 @@ use winit::{
   window::WindowBuilder,
 };
 
-use self::physics::game_object;
 pub use self::physics::game_object::{GameObject, Transform};
 pub use camera::Camera;
 pub use game_state::GameState;
