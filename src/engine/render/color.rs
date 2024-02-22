@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct Color {
   red: f64,
   green: f64,
@@ -37,6 +38,10 @@ impl Color {
       saturation: s,
       value: v,
     }
+  }
+
+  pub fn from_inverted(color: &Self) -> Self {
+    Self::from_rgb(1.0 - color.red, 1.0 - color.green, 1.0 - color.blue)
   }
 
   pub fn set_hue(&mut self, h: f64) {

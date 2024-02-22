@@ -3,6 +3,8 @@ use wgpu_glyph::{ab_glyph, Section, Text};
 
 pub use text::TextObject;
 
+use crate::engine::Color;
+
 pub mod text;
 
 const FONT_BYTES: &[u8] = include_bytes!("../../../res/font/PressStart2P-Regular.ttf");
@@ -49,26 +51,37 @@ impl UIState {
   pub fn draw_text(&mut self, text_objects: Vec<&TextObject>) {
     for text in text_objects.iter() {
       if text.enabled {
-        let layout = wgpu_glyph::Layout::default().h_align(if text.centered {
-          wgpu_glyph::HorizontalAlign::Center
-        } else {
-          wgpu_glyph::HorizontalAlign::Left
-        });
-
-        let section = Section {
-          screen_position: text.position.into(),
-          bounds: text.bounds.into(),
-          layout,
-          ..Section::default()
-        }
-        .add_text(
-          Text::new(&text.text)
-            .with_color(text.color.to_vec4())
-            .with_scale(text.size),
-        );
-
-        self.glyph_brush.queue(section);
+        self.draw_text_object(text, text.shadowed);
       }
     }
+  }
+
+  fn draw_text_object(&mut self, text: &TextObject, shadowed: bool) {
+    if shadowed {
+      let mut shadow = text.clone();
+      shadow.position.x += 2.0;
+      shadow.position.y += 2.0;
+      shadow.color = Color::from_inverted(&text.color);
+      self.draw_text_object(&shadow, false);
+    }
+    let layout = wgpu_glyph::Layout::default().h_align(if text.centered {
+      wgpu_glyph::HorizontalAlign::Center
+    } else {
+      wgpu_glyph::HorizontalAlign::Left
+    });
+
+    let section = Section {
+      screen_position: text.position.into(),
+      bounds: text.bounds.into(),
+      layout,
+      ..Section::default()
+    }
+    .add_text(
+      Text::new(&text.text)
+        .with_color(text.color.to_vec4())
+        .with_scale(text.size),
+    );
+
+    self.glyph_brush.queue(section);
   }
 }

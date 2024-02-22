@@ -15,7 +15,7 @@ pub struct GameScene {
   camera_controller: CameraController,
   player_controller: player::Controller,
   platforms: Vec<GameObject>,
-  text: TextObject,
+  fps_text: TextObject,
 }
 
 impl GameScene {
@@ -24,7 +24,7 @@ impl GameScene {
       camera_controller: CameraController::new(1.0),
       player_controller: player::Controller::new(),
       platforms: Vec::<GameObject>::new(),
-      text: TextObject::default(),
+      fps_text: TextObject::default(),
     }
   }
 
@@ -50,6 +50,8 @@ impl Scene for GameScene {
       .register_collision(&mut game.collision);
 
     self.create_platforms(&mut game.collision);
+
+    self.fps_text.size = 20.0;
   }
 
   fn update(&mut self, game: &mut GameState, input: &Input, time: &Time) {
@@ -68,7 +70,8 @@ impl Scene for GameScene {
       .camera_controller
       .update(&mut game.camera, input.get_mouse_speed(), time);
 
-    self.text.color = Color::from_hsv(time.elapsed_time as f64 * 50.0, 1.0, 1.0);
+    self.fps_text.color = Color::from_hsv(time.elapsed_time as f64 * 50.0, 1.0, 1.0);
+    self.fps_text.text = String::from(format!("{}", (1.0 / time.delta_time) as i32))
   }
 
   fn get_objects(&mut self) -> (Vec<&mut GameObject>, Vec<&engine::TextObject>) {
@@ -77,6 +80,6 @@ impl Scene for GameScene {
     for platform in self.platforms.iter_mut() {
       objects.push(platform);
     }
-    (objects, vec![&self.text])
+    (objects, vec![&self.fps_text])
   }
 }

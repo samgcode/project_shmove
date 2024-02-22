@@ -6,6 +6,7 @@
 - add hazards
 - load level from file
 - level editor
+- rewrite movement code
 - add game state machine #game
 - potential collision idea:
   - move the player on all three axes
@@ -15,14 +16,10 @@
 
 ## Backend
 
-- add text and UI
 - reafactor to use nalgebra instead of cgmath for alg library #engine
 - add more reexports to #engine
 - 4d model
   - calculate normals
-- color changeing background
-  - expose clear color #render.rs
-  - hsv color converter
 - expose lights #render
 - glowing objects #render
 - why does the cursor only lag when hovering over the window like seriously what the hell
