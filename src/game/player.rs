@@ -4,56 +4,39 @@ use project_shmove::engine::{
     collision::{EventStatus, Tag},
     input::Input,
   },
-  GameObject, GameState, Time,
+  Color, GameObject, GameState, TextObject, Time,
 };
 use winit::event::VirtualKeyCode;
 
 use super::camera::CameraController;
 
 const GRAVITY: f32 = 1.0;
-const FRICTION: f32 = 0.1;
-const FAST_FRICTION: f32 = 0.02;
+const FRICTION: f32 = 0.5;
+const AIR_CONTROL: f32 = 0.25;
+const REVERSE_AIR_CONTROL: f32 = 0.05;
 const MIN_OPPOSING_MULTIPLIER: f32 = 0.95;
 
-const CROUCH_WALK_SPEED: f32 = 4.0;
-const WALK_SPEED: f32 = 8.0;
+// const CROUCH_WALK_SPEED: f32 = 8.0;
+const WALK_SPEED: f32 = 12.0;
 const SPRINT_SPEED: f32 = 15.0;
 
-const SPRINT_JUMP_BOOST: f32 = 2.0;
-const SLIDE_BOOST: f32 = 1.3;
+const SPEED_LIMIT: f32 = 30.0;
 
-const CROUCH_JUMP: f32 = 20.0;
-const NORMAL_JUMP: f32 = 30.0;
-const SPRINT_JUMP: f32 = 25.0;
+// const CROUCH_JUMP: f32 = 15.0;
+const NORMAL_JUMP: f32 = 20.0;
+const SPRINT_JUMP_BOOST: f32 = 2.0;
 
 // const CROUCH_JUMP_HEIGHT: f32 = (-CROUCH_JUMP * CROUCH_JUMP) / (2.0 * GRAVITY);
 // const NORMAL_JUMP_HEIGHT: f32 = (-NORMAL_JUMP * NORMAL_JUMP) / (2.0 * GRAVITY);
 // const SPRINT_JUMP_HEIGHT: f32 = (-SPRINT_JUMP * SPRINT_JUMP) / (2.0 * GRAVITY);
 
-const REQUIRED_WALK_TIME: f32 = 0.5;
-const SLIDE_TIME: f32 = 1.0;
-
-const NORMAL_HEIGHT: f32 = 2.0;
-const CROUCHED_HEIGHT: f32 = 0.5;
-
-#[derive(Debug, Clone, Copy)]
-enum MovementState {
-  Static,
-  Crouching,
-  CrouchWalking,
-  Walking(f32),
-  Sprinting,
-  Sliding(f32),
-  SpeedSliding(f32),
-  Uncapped,
-}
-use MovementState::*;
+// const NORMAL_HEIGHT: f32 = 2.0;
+// const CROUCHED_HEIGHT: f32 = 0.5;
 
 pub struct Controller {
   pub game_object: GameObject,
   pub camera_position: Vector3<f32>,
   grounded: bool,
-  movement_state: MovementState,
   velocity: Vector3<f32>,
   direction: Vector2<f32>,
   speed: f32,
@@ -61,6 +44,7 @@ pub struct Controller {
   jump_pressed: bool,
   crouch_pressed: bool,
   crouch_held: bool,
+  pub debug_text: TextObject,
 }
 
 impl Controller {
@@ -75,7 +59,6 @@ impl Controller {
       ),
       camera_position: Vector3::new(0.0, 5.0, 0.0),
       grounded: false,
-      movement_state: Static,
       velocity: Vector3::zero(),
       direction: Vector2::zero(),
       speed: 0.0,
@@ -83,7 +66,14 @@ impl Controller {
       jump_pressed: false,
       crouch_pressed: false,
       crouch_held: false,
+      debug_text: TextObject::default(),
     }
+  }
+
+  pub fn start(&mut self) {
+    self.debug_text.size = 17.0;
+    self.debug_text.position = Vector2::<f32>::new(2.0, 30.0);
+    self.debug_text.color = Color::from_rgb(1.0, 1.0, 1.0);
   }
 
   pub fn update(
@@ -93,25 +83,29 @@ impl Controller {
     camera: &CameraController,
     time: &Time,
   ) {
+    self.debug_text.text = String::from(format!("speed: {}", self.speed));
+    self.debug_text.text += "\n";
+
     self.update_position(game, time.delta_time);
     self.update_input(input, camera);
     self.update_velocity(time);
 
-    if let Crouching | CrouchWalking | Sliding(_) | SpeedSliding(_) = self.movement_state {
-      self.game_object.transform.scale.y = CROUCHED_HEIGHT;
-    } else {
-      self.game_object.transform.scale.y = NORMAL_HEIGHT;
-    }
+    // if let Crouching | CrouchWalking | Sliding(_) | SpeedSliding(_) = self.movement_state {
+    //   self.game_object.transform.scale.y = CROUCHED_HEIGHT;
+    // } else {
+    //   self.game_object.transform.scale.y = NORMAL_HEIGHT;
+    // }
     self.camera_position = self.game_object.transform.position;
 
     if self.game_object.transform.position.y < -50.0 {
       self.velocity = Vector3::zero();
       self.speed = 0.0;
-      self.movement_state = Static;
       self.input_direction = Vector2::zero();
       self.direction = Vector2::zero();
       self.game_object.transform.position = Vector3::new(0.0, 4.0, 0.0);
     }
+
+    // println!("{}", self.debug_text.text);
   }
 
   fn update_position(&mut self, game: &mut GameState, dt: f32) {
@@ -174,7 +168,7 @@ impl Controller {
   fn update_input(&mut self, input: &Input, camera: &CameraController) {
     let mut direction = Vector3::zero();
 
-    self.jump_pressed = input.key_pressed(VirtualKeyCode::Space);
+    self.jump_pressed = input.key_held(VirtualKeyCode::Space);
     self.crouch_pressed = input.key_pressed(VirtualKeyCode::LShift);
     self.crouch_held = input.key_held(VirtualKeyCode::LShift);
 
@@ -204,55 +198,47 @@ impl Controller {
     }
   }
 
-  fn update_velocity(&mut self, time: &Time) {
-    if !self.jump_pressed {
-      self.apply_friction();
-    }
-
-    if self.grounded {
-      if self.jump_pressed {
-        self.update_jump();
+  fn update_velocity(&mut self, _time: &Time) {
+    if self.grounded && self.speed > SPRINT_SPEED {
+      self.speed -= FRICTION;
+      if self.speed < SPRINT_SPEED {
+        self.speed = SPRINT_SPEED;
       }
-      self.update_crouch(time);
     }
 
-    if self.speed <= SPRINT_SPEED {
-      if !self.input_direction.is_zero() {
-        if let Sliding(_) = self.movement_state {
+    if self.grounded && self.jump_pressed {
+      self.velocity.y = NORMAL_JUMP;
+      self.speed += SPRINT_JUMP_BOOST;
+    }
+
+    self.debug_text.text += &format!("direction: {:?}\n", self.direction);
+    self.debug_text.text += &format!("input: {:?}\n", self.input_direction);
+
+    if self.input_direction.is_zero() {
+      self.speed -= FRICTION;
+    } else {
+      if self.speed < SPEED_LIMIT {
+        self.direction = self.input_direction;
+        if self.speed < WALK_SPEED {
+          self.speed = WALK_SPEED;
+        }
+      } else {
+        let alignment = cgmath::dot(self.direction, self.input_direction);
+        let perpendicular = (self.input_direction - self.direction) * alignment;
+        if alignment > 0.0 {
+          self.direction += perpendicular * alignment * AIR_CONTROL;
         } else {
-          self.direction = self.input_direction;
+          self.direction += perpendicular * REVERSE_AIR_CONTROL;
+          const DIVISOR: f32 = 2.0 / (1.0 - MIN_OPPOSING_MULTIPLIER);
+          let alignment = (alignment + 1.0) / DIVISOR;
+          self.speed *= MIN_OPPOSING_MULTIPLIER + alignment;
         }
-        self.update_capped_movement(time);
+        self.direction = cgmath::InnerSpace::normalize(self.direction);
       }
     }
 
-    if !self.direction.is_zero() {
-      self.direction = cgmath::InnerSpace::normalize(self.direction);
-    }
-
-    if self.speed > SPRINT_SPEED {
-      if !self.grounded {
-        if !self.direction.is_zero() && !self.input_direction.is_zero() {
-          if self.direction != self.input_direction {
-            let alignment = cgmath::dot(self.direction, self.input_direction);
-            let perpendicular = self.input_direction - self.direction * alignment;
-            self.direction += perpendicular * 0.03;
-
-            const DIVISOR: f32 = 2.0 / (1.0 - MIN_OPPOSING_MULTIPLIER);
-            let alignment = (alignment + 1.0) / DIVISOR;
-            if alignment <= 1.0 {
-              self.speed *= MIN_OPPOSING_MULTIPLIER + alignment;
-            }
-            if self.speed < SPRINT_SPEED {
-              self.movement_state = Sprinting;
-            }
-          }
-        }
-      }
-    }
-
-    if self.speed == 0.0 {
-      self.direction = Vector2::zero();
+    if self.speed < 3.0 {
+      self.speed = 0.0;
     }
 
     let vel = if self.direction.is_zero() {
@@ -260,146 +246,7 @@ impl Controller {
     } else {
       cgmath::InnerSpace::normalize(self.direction) * self.speed
     };
+
     self.velocity = Vector3::new(vel.x, self.velocity.y, vel.y);
-  }
-
-  fn update_capped_movement(&mut self, time: &Time) {
-    match self.movement_state {
-      Static => {
-        self.speed = WALK_SPEED;
-        self.movement_state = Walking(time.elapsed_time);
-      }
-      Crouching => {
-        self.speed = CROUCH_WALK_SPEED;
-        self.movement_state = CrouchWalking;
-      }
-      CrouchWalking => {
-        self.speed = CROUCH_WALK_SPEED;
-      }
-      Walking(start_time) => {
-        self.speed = WALK_SPEED;
-        if time.elapsed_time - start_time > REQUIRED_WALK_TIME {
-          self.movement_state = Sprinting;
-        }
-      }
-      Sliding(start_time) => {
-        self.speed = SPRINT_SPEED;
-        if time.elapsed_time - start_time > SLIDE_TIME {
-          self.movement_state = Sprinting;
-        }
-      }
-      Sprinting => {
-        self.speed = SPRINT_SPEED;
-      }
-      Uncapped | SpeedSliding(_) => {
-        // panic!("Invalid movment state: expected capped, is uncapped")
-      }
-    }
-  }
-
-  fn update_jump(&mut self) {
-    match self.movement_state {
-      Static | Walking(_) => {
-        self.velocity.y = NORMAL_JUMP;
-      }
-      Crouching | CrouchWalking => {
-        self.velocity.y = CROUCH_JUMP;
-      }
-      Sliding(_) => {
-        self.velocity.y = CROUCH_JUMP;
-        self.movement_state = Sprinting;
-      }
-      SpeedSliding(_) => {
-        self.velocity.y = CROUCH_JUMP;
-        self.movement_state = Uncapped;
-      }
-      Sprinting => {
-        self.velocity.y = SPRINT_JUMP;
-        self.speed += SPRINT_JUMP_BOOST;
-        self.movement_state = Uncapped;
-      }
-      Uncapped => {
-        self.velocity.y = SPRINT_JUMP;
-        self.speed += SPRINT_JUMP_BOOST;
-      }
-    }
-  }
-
-  fn update_crouch(&mut self, time: &Time) {
-    if self.crouch_pressed {
-      self.game_object.transform.position.y -= NORMAL_HEIGHT - CROUCHED_HEIGHT;
-      self.movement_state = match self.movement_state {
-        Static => Crouching,
-        Walking(_) => Sliding(time.elapsed_time),
-        Crouching => Static,
-        CrouchWalking => Walking(time.elapsed_time),
-        Sprinting | Uncapped => {
-          self.speed *= SLIDE_BOOST;
-          SpeedSliding(time.elapsed_time)
-        }
-        Sliding(_) | SpeedSliding(_) => Sprinting,
-      }
-    } else {
-      match self.movement_state {
-        Static => {
-          if self.crouch_held {
-            self.movement_state = Crouching;
-          }
-        }
-        Crouching => {
-          if !self.crouch_held {
-            self.movement_state = Static;
-          }
-          self.speed = CROUCH_WALK_SPEED;
-          self.movement_state = CrouchWalking;
-        }
-        CrouchWalking => {
-          if !self.crouch_held {
-            self.movement_state = Walking(time.elapsed_time);
-          }
-        }
-        Sliding(start_time) => {
-          self.speed = SPRINT_SPEED;
-          if time.elapsed_time - start_time > SLIDE_TIME {
-            self.movement_state = Sprinting;
-          }
-        }
-        SpeedSliding(start_time) => {
-          if time.elapsed_time - start_time > SLIDE_TIME {
-            self.movement_state = Uncapped;
-          }
-        }
-        _ => {}
-      }
-    }
-  }
-
-  fn apply_friction(&mut self) {
-    if self.grounded {
-      if self.speed > SPRINT_SPEED {
-        if let Sliding(_) | SpeedSliding(_) = self.movement_state {
-        } else {
-          self.speed *= 1.0 - FAST_FRICTION;
-        }
-      } else if self.input_direction.is_zero() {
-        if self.speed > WALK_SPEED {
-          self.speed *= 1.0 - FRICTION;
-        } else if self.speed > 1.0 {
-          if let Sprinting = self.movement_state {
-            self.movement_state = Static;
-          }
-          self.speed *= 1.0 - FRICTION;
-        } else {
-          self.speed = 0.0;
-          self.movement_state = Static;
-        }
-      }
-    }
-
-    if let Uncapped = self.movement_state {
-      if self.speed <= SPRINT_SPEED {
-        self.movement_state = Sprinting;
-      }
-    }
   }
 }

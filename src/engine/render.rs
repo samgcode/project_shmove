@@ -141,6 +141,7 @@ pub struct State {
   obj_4: mesh::Mesh4d,
   projected_4d: mesh::Mesh,
   instance_buffer: wgpu::Buffer,
+  #[allow(unused)]
   instance_buffer_4: wgpu::Buffer,
   instance_count: u32,
   clear_color: wgpu::Color,
@@ -202,7 +203,7 @@ impl State {
     surface.configure(&device, &config);
 
     let projection =
-      camera::Projection::new(config.width, config.height, cgmath::Deg(45.0), 0.1, 100.0);
+      camera::Projection::new(config.width, config.height, cgmath::Deg(60.0), 0.1, 100.0);
 
     let mut camera_uniform = CameraUniform::new();
     camera_uniform.update_view_proj(&camera, &projection);
@@ -436,13 +437,13 @@ impl State {
         &self.camera_bind_group,
         &self.light.bind_group,
       );
-      render_pass.set_vertex_buffer(1, self.instance_buffer_4.slice(..));
-      render_pass.draw_mesh_instanced(
-        &self.projected_4d,
-        0..1,
-        &self.camera_bind_group,
-        &self.light.bind_group,
-      );
+      // render_pass.set_vertex_buffer(1, self.instance_buffer_4.slice(..));
+      // render_pass.draw_mesh_instanced(
+      //   &self.projected_4d,
+      //   0..1,
+      //   &self.camera_bind_group,
+      //   &self.light.bind_group,
+      // );
     }
 
     self

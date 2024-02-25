@@ -51,6 +51,8 @@ impl Scene for GameScene {
 
     self.create_platforms(&mut game.collision);
 
+    self.player_controller.start();
+
     self.fps_text.size = 20.0;
   }
 
@@ -71,7 +73,7 @@ impl Scene for GameScene {
       .update(&mut game.camera, input.get_mouse_speed(), time);
 
     self.fps_text.color = Color::from_hsv(time.elapsed_time as f64 * 50.0, 1.0, 1.0);
-    self.fps_text.text = String::from(format!("{}", (1.0 / time.delta_time) as i32))
+    self.fps_text.text = String::from(format!("{}", (1.0 / time.delta_time) as i32));
   }
 
   fn get_objects(&mut self) -> (Vec<&mut GameObject>, Vec<&engine::TextObject>) {
@@ -80,6 +82,9 @@ impl Scene for GameScene {
     for platform in self.platforms.iter_mut() {
       objects.push(platform);
     }
-    (objects, vec![&self.fps_text])
+    (
+      objects,
+      vec![&self.fps_text, &self.player_controller.debug_text],
+    )
   }
 }
