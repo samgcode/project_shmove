@@ -1,7 +1,7 @@
 use cgmath::{Vector3, Zero};
 use ncollide3d::pipeline::CollisionObjectSlabHandle;
 
-use super::collision::{Collision, CollisionEvent, Tag, EventStatus};
+use super::collision::{Collision, CollisionEvent, EventStatus, Tag};
 
 pub struct Transform {
   pub position: Vector3<f32>,

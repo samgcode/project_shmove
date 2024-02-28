@@ -17,6 +17,8 @@ pub mod physics;
 pub mod render;
 mod time;
 
+const TITLE: &'static str = "Super Project Yourself At Unreasonably High Velocities Across Vast Distances Over Solid Color Abstract Shapes To Bring A Strange Creature To An Unknown Position In The Void 3D 64 (SPYAUHVAVDOSCASTBASCTAUPITV 3D64)";
+
 pub trait Scene {
   fn start(&mut self, game: &mut GameState);
   fn update(&mut self, game: &mut GameState, input: &physics::input::Input, time: &Time);
@@ -28,8 +30,9 @@ pub async fn run(mut game: impl Scene + 'static) {
 
   let event_loop = EventLoop::new();
   let window = WindowBuilder::new()
-    .with_title("Super Project Yourself At Unreasonably High Velocities Across Vast Distances Over Solid Color Abstract Shapes To Bring A Strange Creature To An Unknown Position In The Void 3D 64 (SPYAUHVAVDOSCASTBASCTAUPITV 3D64)")
-    .build(&event_loop).unwrap();
+    .with_title(TITLE)
+    .build(&event_loop)
+    .unwrap();
 
   let mut physics_state = physics::State::new();
   let mut game_state = GameState::new();

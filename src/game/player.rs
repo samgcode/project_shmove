@@ -12,9 +12,9 @@ use super::camera::CameraController;
 
 const GRAVITY: f32 = 1.0;
 const FRICTION: f32 = 0.5;
-const AIR_CONTROL: f32 = 0.25;
+const AIR_CONTROL: f32 = 0.15;
 const REVERSE_AIR_CONTROL: f32 = 0.05;
-const MIN_OPPOSING_MULTIPLIER: f32 = 0.95;
+const MIN_OPPOSING_MULTIPLIER: f32 = 0.99;
 
 // const CROUCH_WALK_SPEED: f32 = 8.0;
 const WALK_SPEED: f32 = 12.0;
@@ -71,7 +71,7 @@ impl Controller {
   }
 
   pub fn start(&mut self) {
-    self.debug_text.size = 17.0;
+    self.debug_text.size = 15.0;
     self.debug_text.position = Vector2::<f32>::new(2.0, 30.0);
     self.debug_text.color = Color::from_rgb(1.0, 1.0, 1.0);
   }
@@ -83,7 +83,7 @@ impl Controller {
     camera: &CameraController,
     time: &Time,
   ) {
-    self.debug_text.text = String::from(format!("speed: {}", self.speed));
+    self.debug_text.text = String::from(format!("speed: {:.3}", self.speed));
     self.debug_text.text += "\n";
 
     self.update_position(game, time.delta_time);
@@ -211,8 +211,14 @@ impl Controller {
       self.speed += SPRINT_JUMP_BOOST;
     }
 
-    self.debug_text.text += &format!("direction: {:?}\n", self.direction);
-    self.debug_text.text += &format!("input: {:?}\n", self.input_direction);
+    self.debug_text.text += &format!(
+      "direction: {:.3}, {:.3}\n",
+      self.direction.x, self.direction.y
+    );
+    self.debug_text.text += &format!(
+      "input: {:.3}, {:.3}\n",
+      self.input_direction.x, self.input_direction.y
+    );
 
     if self.input_direction.is_zero() {
       self.speed -= FRICTION;
