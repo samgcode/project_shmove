@@ -3,60 +3,151 @@
 ## Frontend
 
 - make a readme
+- full screen
+  - exit full screen
+  - cursor lock, hide, etc
+  - pause on focus lost
+- delta time for player movement
+- sliding along the ground
+- sliding down and up slopes
+- extra jump height when turning significantly
 - add hazards
+  - reset player
 - load level from file
 - level editor
 - add game state machine #game
-- potential collision idea:
-  - move the player on all three axes
-  - use toi to move to wall
-  - use horizontal velocity to move along the slope
-- [advanced player movement](#movement)
+  - state for menu, playing, paused
+- 3d text objects
+- global settings object
+- scale ui with window?
+
+potential collision idea:
+
+- move the player on all three axes
+- use toi to move to wall
+- use horizontal velocity to move along the slope
+
+### menus
+
+- menu buttons
+- dynamic keybind text
+- title screen
+  - 3d spinning text + title
+  - press (jump) to start pressing (jump)
+  - settings
+  - level editor
+- pause menu
+  - text
+  - blur the screen
+  - press (jump) to continue pressing (jump)
+  - options button
+  - save and exit
+- settings menu
+  - multiple tabs
+  - dynamically generate options for each page
+  - general
+    - ui scale
+    - lock cursor
+  - video
+    - full screen/windowed/etc
+    - v-sync, fps
+    - base FOV
+    - other advanced WGPU features
+    - resolution?
+    - brightness?
+  - audio
+    - global volume
+    - muisc volume
+    - sfx volume
+  - controls
+    - invert mouse axes
+    - sensitivity
+      - auto detection?
+    - list of all actions
+      - movement, jump, crouch
+      - some effect toggles, screenshot?
+      - pause, confirm, retry, clear save
+      - editor key binds
+    - select an action to change the key bind
+      - pressing a key toggles that key for that action
+      - also detect scroll events
+    - controller support
+  - accessability
+    - visual effects
+    - text colors
+    - change certain colors?
+      - maybe a global hue shift filter?
+    - game speed?/some kind of assist mode
+  - speed run
+    - input display
+    - level/split timers
+
+### Level editor
+
+- create a new level, name, description?, mode?
+- save and load levels
+  - see list of saved levels
+  - steam workshop?
+- free move camera
+- create platforms/hazards
+- auto save
+- play testing
+  - ghost/trail?
+  - return to editor in the same spot
+- click on objects to select them
+  - visual indication
+    - border/outline?
+  - properties panel
+  - move in all 3 axes
+  - scale in all 3 axes
+  - rotate in all 3 axes
+  - change color
+    - rgb, hsv, hex
+    - text input?
+    - scroll to change hue?
+  - copy/paste
+    - copies select object, pastes n units from the camera in the look direction
+  - delete
+- multi select
+  - select multiple objects
+  - edit properties relative to each object
+- controls
+  - binds for {+,-}x, y and z
+  - modifiers for scale, rotate
+  - text input for pos, scale, rot, color
+  - bind for grid snapping
 
 ## Backend
 
-- reafactor to use nalgebra instead of cgmath for alg library #engine
+- refactor to use nalgebra instead of cgmath for alg library #engine
 - add more reexports to #engine
 - 4d model
   - calculate normals
 - expose lights #render
 - glowing objects #render
-- why does the cursor only lag when hovering over the window like seriously what the hell
+- separate FPS and TPS
+- v-sync
+- allow for video settings
 
 ## Movement
 
-- basic mechanics
-  - X walking
-  - X jumping
-    - ~~variable height (min, max)~~ (not really useful)
-    - X moving in mid air is the same as horizontal
-  - crouching while not moving: enter crouched state
-    - walk slower, doesn't automatically end
-- intermediate movement
-  - X crouching while moving: short slide
-    - X gives running speed
-    - X automatically ends
-  - X walking for a short time -> running
-  - running
-    - changing input direction significantly -> walking
-    - X jump -> sprint jump
-      - X slightly higher fixed height jump
-      - X small boost of speed initially
-      - X higher speed is maintained until you land
-    - X crouching while sprinting -> speed slide
-      - X gives an extra boost of speed until the slide ends
-- advanced movement
-  - sprint jump
-    - moving in a direction that is relatively alligned with the motion
-      - speed is held constant
-      - X direction changes by a smaller amount, greater if more misaligned
-    - moving in a direction that oposes the motion
-      - X speed is decreased by an amount proportional to how oposed
-      - if jump height is less than max, max is increased
-  - X speed slide, jump -> slide boost
-    - X more speed than regular sprint jump but less height
-  - X jumping within a short period after landing -> bunny hop
-    - X essentially a sprint jump
-    - X since speed hasnt fully decreased to sprint speed, the new jump is faster
-  - X sliding within a short period of landing -> speed slide
-    - X gives more speed since speed compounds
+- [] basic mechanics
+  - [x] walking
+  - [] jumping
+    - [] variable height (min, max)
+      - [] jumping lower gives more speed
+    - [x] moving in mid air is the same as horizontal
+    - [x] gives a small boost of speed
+  - [] crouching while not moving: enter crouched state
+    - [] walk slower, doesn't automatically end
+- [] advanced movement
+  - [] crouching while moving: slide
+    - [] less friction
+    - [] gain speed when moving down slopes
+  - [] moving faster than speed limit
+    - [] changing input direction
+      - [x] slower turning
+      - [] if not at jump peak, increase jump height
+    - [x] changing input direction significantly
+      - [x] decrease in speed
+    - [] proportional to speed

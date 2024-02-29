@@ -1,7 +1,7 @@
 use winit::{
   event::*,
   event_loop::{ControlFlow, EventLoop},
-  window::WindowBuilder,
+  window::{Fullscreen, WindowBuilder},
 };
 
 pub use self::physics::game_object::{GameObject, Transform};
@@ -31,6 +31,8 @@ pub async fn run(mut game: impl Scene + 'static) {
   let event_loop = EventLoop::new();
   let window = WindowBuilder::new()
     .with_title(TITLE)
+    .with_fullscreen(Some(Fullscreen::Borderless(None)))
+    .with_theme(Some(winit::window::Theme::Dark))
     .build(&event_loop)
     .unwrap();
 
@@ -40,6 +42,9 @@ pub async fn run(mut game: impl Scene + 'static) {
   let mut time = Time::create();
 
   game.start(&mut game_state);
+  physics_state
+    .input
+    .updated_window_size(render_state.window());
 
   event_loop.run(move |event, _, control_flow| {
     physics_state.input.handle_event(&event);
@@ -51,14 +56,23 @@ pub async fn run(mut game: impl Scene + 'static) {
         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
         WindowEvent::Resized(physical_size) => {
           render_state.resize(*physical_size);
+          physics_state
+            .input
+            .updated_window_size(render_state.window());
         }
         WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
           render_state.resize(**new_inner_size);
+          physics_state
+            .input
+            .updated_window_size(render_state.window());
         }
         _ => {}
       },
       Event::RedrawRequested(window_id) if window_id == render_state.window().id() => {
         time.update();
+
+        physics_state.input.update();
+        game.update(&mut game_state, &physics_state.input, &time);
 
         let (game_objects, text_objects) = game.get_objects();
         render_state.update_clear_color(&game_state.background_color);
@@ -76,8 +90,15 @@ pub async fn run(mut game: impl Scene + 'static) {
           Err(e) => eprintln!("{:?}", e),
         }
 
-        physics_state.input.update();
-        game.update(&mut game_state, &physics_state.input, &time);
+        if physics_state.input.key_pressed(VirtualKeyCode::Escape) {
+          if let Some(_) = render_state.window().fullscreen() {
+            render_state.window().set_fullscreen(None);
+          } else {
+            render_state
+              .window()
+              .set_fullscreen(Some(Fullscreen::Borderless(None)));
+          }
+        }
       }
       Event::MainEventsCleared => {
         render_state.window().request_redraw();

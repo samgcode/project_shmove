@@ -6,6 +6,7 @@ use winit::{
     DeviceEvent, ElementState, Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode,
     WindowEvent,
   },
+  window::{CursorGrabMode, Window},
 };
 
 #[derive(Debug)]
@@ -169,6 +170,16 @@ impl Input {
         }
       }
       self.key_states.insert(*code, new_state);
+    }
+  }
+
+  pub fn updated_window_size(&mut self, window: &Window) {
+    if let Some(_) = window.fullscreen() {
+      window.set_cursor_grab(CursorGrabMode::Confined).unwrap();
+      window.set_cursor_visible(false);
+    } else {
+      window.set_cursor_grab(CursorGrabMode::None).unwrap();
+      window.set_cursor_visible(true);
     }
   }
 }
